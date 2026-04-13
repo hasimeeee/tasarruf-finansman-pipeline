@@ -1,0 +1,14 @@
+psycopg2-binary==2.9.9
+pandas==2.2.2
+faker==24.0.0
+python-dotenv==1.0.1
+pyyaml==6.0.1
+sqlalchemy==2.0.30
+jupyter==1.0.0
+matplotlib==3.8.4
+seaborn==0.13.2
+scikit-learn==1.4.2
+xgboost==2.0.3
+lightgbm==4.3.0
+apscheduler==3.10.4
+great-expectations==0.18.15
