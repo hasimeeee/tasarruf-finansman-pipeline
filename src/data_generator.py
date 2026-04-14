@@ -17,8 +17,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 #veritabanı şifresi, şehir listesi vb. ayarları kod içine yazmak yerine config.yaml'dan çekioyuz. Bu sayede ayarlar degısınce koda dokunmadan yaml dosyasını degıstırıyoruz.
-with open('config.yaml', 'r') as f : #dosyayı oku modunda aç 'f' degişkenine ata
-    config = yaml.safe_load(f) #yaml dosyasını Python dictionary'sine çevir
+from config_loader import load_config
+
+config = load_config()
+
 
 #şehir dağılımı
 CITIES = {
@@ -332,7 +334,104 @@ def generate_payments(subscriptions, plans):
  
     logger.info(f'{len(payments)} ödeme kaydı üretildi.')
     return payments
-def save_to_staging(conn, members, plans, subscriptions, payments):
+
+def generate_lottery(subscriptions, plans):
+    """
+    Abonelik verilerindeki kura bilgisinden staging.lottery kayıtları üretir.
+    Her kura kazanan abonelik için 1 kayıt, kazanmayan için 0-2 arası 
+    katılım kaydı oluşturur.
+    """
+    lottery = []
+    lottery_counter = 1
+    plan_lookup = {p['plan_id']: p for p in plans}
+
+    for sub in subscriptions:
+        plan = plan_lookup[sub['plan_id']]
+
+        if sub['kura_won']:
+            # Kazanan: tek kayıt, is_winner=True
+            lottery_date = sub['kura_date']
+            lottery.append({
+                'lottery_id':      f'L{lottery_counter:06d}',
+                'member_id':       sub['member_id'],
+                'plan_id':         sub['plan_id'],
+                'subscription_id': sub['subscription_id'],
+                'lottery_date':    lottery_date,
+                'lottery_round':   random.randint(1, 8),
+                'is_winner':       True
+            })
+            lottery_counter += 1
+        else:
+            # Kazanmayan: 0-2 arası katılım
+            num_entries = random.randint(0, 2)
+            for _ in range(num_entries):
+                offset_months = random.randint(3, min(18, plan['duration_months']))
+                lottery_date = sub['start_date'] + relativedelta(months=offset_months)
+                lottery.append({
+                    'lottery_id':      f'L{lottery_counter:06d}',
+                    'member_id':       sub['member_id'],
+                    'plan_id':         sub['plan_id'],
+                    'subscription_id': sub['subscription_id'],
+                    'lottery_date':    lottery_date,
+                    'lottery_round':   random.randint(1, 8),
+                    'is_winner':       False
+                })
+                lottery_counter += 1
+
+    logger.info(f'{len(lottery)} kura kaydı üretildi.')
+    return lottery
+def inject_dirty_data(members, payments):
+         """
+    Gerçek hayat veri kirliliklerini simüle eder.
+    ETL pipeline'ının temizleme adımını test etmek için kasıtlı olarak
+    bozuk veri enjekte eder.
+
+    Kirlilikler:
+        - %2 üyede eksik tc_hash (NULL)
+        - %1 üye duplike (aynı member_id, farklı loaded_at)
+        - %0.5 ödemede geçersiz tutar (negatif)
+        - %0.3 ödemede tutarsız tarih (payment_date < due_date ama days_late > 0)
+
+    Parametreler:
+        members  (list[dict])
+        payments (list[dict])
+    Döndürür:
+        members, payments (kirli versiyonlar)
+    """
+    # 1. %2 üyede tc_hash → None
+         null_tc_count = int(len(members) * 0.02)
+         for m in random.sample(members, null_tc_count):
+          m['tc_hash'] = None
+
+         logger.info(f'Kirli veri: {null_tc_count} üyede tc_hash NULL yapıldı.')
+
+    # 2. %1 üyeyi duplike et (aynı kayıt tekrar eklenir)
+         dupe_count = int(len(members) * 0.01)
+         dupes = random.sample(members, dupe_count)
+         members.extend(dupes)
+         logger.info(f'Kirli veri: {dupe_count} üye duplike edildi. Toplam: {len(members)}')
+
+    # 3. %0.5 ödemede geçersiz tutar
+         invalid_amount_count = int(len(payments) * 0.005)
+         for p in random.sample(payments, invalid_amount_count):
+          p['amount_paid'] = round(random.uniform(-9999, -1), 2)
+         
+         logger.info(f'Kirli veri: {invalid_amount_count} ödemede geçersiz tutar.')
+
+    # 4. %0.3 ödemede tutarsız tarih
+    #    days_late pozitif ama payment_date due_date'den önce gösterilir
+         inconsistent_count = int(len(payments) * 0.003)
+         for p in random.sample(payments, inconsistent_count):
+          if p['payment_date'] is not None and p['days_late'] is not None:
+            p['payment_date'] = p['due_date'] - timedelta(days=random.randint(1, 10))
+            p['days_late'] = random.randint(5, 30)  # tarihle çelişiyor
+         
+         logger.info(f'Kirli veri: {inconsistent_count} ödemede tutarsız tarih.')
+
+         return members, payments
+
+
+def save_to_staging(conn, members, plans, subscriptions, payments, lottery):
     """
     Tüm veriyi PostgreSQL staging şemasına toplu yazar.
     Hata olursa rollback — ya hepsi yazılır ya hiçbiri.
@@ -351,8 +450,8 @@ def save_to_staging(conn, members, plans, subscriptions, payments):
               m['birth_date'], m['income'], m['signup_date'], m['member_status'],
               m['phone'], m['email']) for m in members]
         )
-        logger.info(f'  → {len(members)} satır eklendi.')
- 
+        logger.info(f'  -> {len(members)} satır eklendi.')
+
         logger.info('staging.plans yazılıyor...')
         execute_values(cur,
             """
@@ -364,8 +463,8 @@ def save_to_staging(conn, members, plans, subscriptions, payments):
             [(p['plan_id'], p['plan_name'], p['plan_type'], p['duration_months'],
               p['target_amount'], p['monthly_installment']) for p in plans]
         )
-        logger.info(f'  → {len(plans)} satır eklendi.')
- 
+        logger.info(f'  -> {len(plans)} satır eklendi.')
+
         logger.info('staging.subscriptions yazılıyor...')
         execute_values(cur,
             """
@@ -378,8 +477,8 @@ def save_to_staging(conn, members, plans, subscriptions, payments):
               s['expected_end_date'], s['kura_date'], s['kura_won'], s['subscription_status'])
              for s in subscriptions]
         )
-        logger.info(f'  → {len(subscriptions)} satır eklendi.')
- 
+        logger.info(f'  -> {len(subscriptions)} satır eklendi.')
+
         logger.info('staging.payments yazılıyor...')
         execute_values(cur,
             """
@@ -392,17 +491,31 @@ def save_to_staging(conn, members, plans, subscriptions, payments):
               p['payment_date'], p['amount_due'], p['amount_paid'],
               p['days_late'], p['payment_status']) for p in payments]
         )
-        logger.info(f'  → {len(payments)} satır eklendi.')
- 
+        logger.info(f'  -> {len(payments)} satır eklendi.')
+
+        logger.info('staging.lottery yazılıyor...')
+        execute_values(cur,
+            """
+            INSERT INTO staging.lottery
+                (lottery_id, member_id, plan_id, subscription_id,
+                 lottery_date, lottery_round, is_winner)
+            VALUES %s
+            """,
+            [(l['lottery_id'], l['member_id'], l['plan_id'], l['subscription_id'],
+              l['lottery_date'], l['lottery_round'], l['is_winner']) for l in lottery]
+        )
+        logger.info(f'  -> {len(lottery)} satır eklendi.')
+
         conn.commit()
         logger.info('Tüm staging verileri başarıyla kaydedildi.')
- 
+
     except Exception as e:
         conn.rollback()
         logger.error(f'Staging yazımında hata: {e}')
         raise
     finally:
         cur.close()
+
 
 if __name__ == '__main__':
     logger.info('=== FuzulEv Veri Üretimi Başlıyor ===')
@@ -413,10 +526,14 @@ if __name__ == '__main__':
     plans         = generate_plans()
     subscriptions = generate_subscriptions(members, plans)
     payments      = generate_payments(subscriptions, plans)
+    lottery       = generate_lottery(subscriptions, plans)
+
+    # Kirli veri enjeksiyonu
+    members, payments = inject_dirty_data(members, payments)
 
     conn = get_db_connection()
     try:
-        save_to_staging(conn, members, plans, subscriptions, payments)
+        save_to_staging(conn, members, plans, subscriptions, payments, lottery)
     finally:
         conn.close()
         logger.info('Veritabanı bağlantısı kapatıldı.')
