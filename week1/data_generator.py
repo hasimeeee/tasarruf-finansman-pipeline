@@ -59,6 +59,16 @@ RELIGIOUS_HOLIDAYS = [
     (2025, 6, 6, 4),
     (2026, 5, 27, 4),
 ]
+def _gecikme_gun_uret(prob=0.5):
+    """
+    Gecikme gününü üstel dağılımla üretir.
+    Çoğu küçük gecikme, azı büyük gecikme.
+    """
+    if random.random() > prob:
+        return 0
+    
+    # çoğunluk 1-10 gün, nadiren 30+
+    return int(random.expovariate(1/5)) + 1
 def build_holiday_set(year_start=2022, year_end=2027):
     """
     2022-2026 arası tüm resmi tatil günlerini bir set olarak döndürür.
@@ -174,36 +184,34 @@ def generate_plans():
 def generate_subscriptions(members, plans):
     """
     Her üye için rastgele bir plana abonelik oluşturur.
-    Parametreler:
-        members (list[dict])
-        plans   (list[dict])
-    Döndürür:
-        list[dict]
     """
     subscriptions = []
  
     for i, member in enumerate(members):
-        plan = random.choice(plans)
+        income = member['income']
+        if income >= 100_000:
+            plan = random. choices(plans, weights = [10, 10, 40, 10, 30], k=1)[0]
+        elif income >= 50_000:
+            plan = random.choices(plans, weights=[20, 20, 30, 20, 10], k=1)[0]
+        else:
+            plan = random.choices(plans, weights=[30, 30, 10, 25, 5], k=1)[0]
+
         start_date = member['signup_date']
- 
         expected_end_date = start_date + relativedelta(months=plan['duration_months'])
- 
-        # %20 ihtimalle kura kazanmış
+
         kura_won = random.random() < 0.20
         kura_date = None
         if kura_won:
             kura_offset = random.randint(6, min(24, plan['duration_months']))
             kura_date = start_date + relativedelta(months=kura_offset)
- 
-        status_map = {
-            'aktif':     'aktif',
-            'gecikmeli': 'aktif',
-            'pasif':     'beklemede',
-            'terk':      'terk'
-        }
-        subscription_status = status_map.get(member['member_status'], 'aktif')
- 
-        subscriptions.append({
+    status_map = {
+        'aktif' : 'aktif',
+        'gecikmeli': 'gecikmeli',
+        'pasif' : 'pasif',
+        'terk' : 'terk'
+    }
+    subscription_status = status_map.get(member['member_status'], 'aktif')
+    subscriptions.append({
             'subscription_id': f'S{i+1:05d}',
             'member_id': member['member_id'],
             'plan_id': plan['plan_id'],
@@ -212,16 +220,11 @@ def generate_subscriptions(members, plans):
             'kura_date': kura_date,
             'kura_won': kura_won,
             'subscription_status': subscription_status,
-            # geliri saklıyoruz — ödeme davranışını etkileyecek
-            '_income': member['income']
+            '_income': income
         })
- 
     logger.info(f'{len(subscriptions)} abonelik üretildi.')
     return subscriptions
-def _gecikme_gun_uret(base_late_prob):
-    # üstel dağılım — ortalama 12 gün, gerçek sektör verisiyle uyumlu
-    days = int(random.expovariate(1 / 12)) + 1
-    return min(days, 90)  # 90 günden fazlası pratikte terk sayılır
+
 def generate_payments(subscriptions, plans):
     """
     Her abonelik için aylık taksit ödeme kayıtları üretir.
@@ -231,17 +234,12 @@ def generate_payments(subscriptions, plans):
     - Gecikme günleri üstel dağılır (çoğu kısa, az sayısı uzun)
     - Düşük gelirli üyeler daha çok gecikir
     - Bayram öncesi dönemlerde gecikme olasılığı artar
- 
-    Parametreler:
-        subscriptions (list[dict])
-        plans         (list[dict])
-    Döndürür:
-        list[dict]
     """
     payments = []
     payment_counter = 1
     plan_lookup = {p['plan_id']: p for p in plans}
     today = date.today()
+ 
     for sub in subscriptions:
         plan = plan_lookup[sub['plan_id']]
         amount_due = plan['monthly_installment']
@@ -249,23 +247,22 @@ def generate_payments(subscriptions, plans):
         duration = plan['duration_months']
         income = sub.get('_income', 55000)
  
-        # terk eden üye: sadece ilk birkaç ay ödedi
         if sub['subscription_status'] == 'terk':
             active_months = random.randint(1, min(6, duration))
         else:
             active_months = duration
-             # düşük gelir = daha yüksek gecikme olasılığı
+ 
         if income < 30000:
-            late_extra = 15    # %15 ek gecikme olasılığı
+            late_extra = 15
         elif income < 50000:
             late_extra = 8
         else:
             late_extra = 0
-            # abonelik statüsüne göre temel ödeme dağılımı
+ 
         base_weights = {
-            'aktif':     {'odendi': 80 - late_extra, 'gecikmeli': 15 + late_extra // 2, 'odenmedi': 5 + late_extra // 2},
-            'beklemede': {'odendi': 50 - late_extra, 'gecikmeli': 30 + late_extra // 2, 'odenmedi': 20 + late_extra // 2},
-            'terk':      {'odendi': 30,               'gecikmeli': 20,                   'odenmedi': 50},
+            'aktif':     {'odendi': max(1, 80 - late_extra), 'gecikmeli': 15 + late_extra // 2, 'odenmedi': 5 + late_extra // 2},
+            'beklemede': {'odendi': max(1, 50 - late_extra), 'gecikmeli': 30 + late_extra // 2, 'odenmedi': 20 + late_extra // 2},
+            'terk':      {'odendi': 30, 'gecikmeli': 20, 'odenmedi': 50},
         }
         weights = base_weights.get(
             sub['subscription_status'],
@@ -273,19 +270,20 @@ def generate_payments(subscriptions, plans):
         )
  
         for month in range(active_months):
-            # her ayın aynı günü — relativedelta ile
             due_date = start_date + relativedelta(months=month)
  
-            # gelecekteki vadeler için kayıt üretme
             if due_date > today:
                 break
  
-            # tatil öncesi 7 günde gecikme olasılığı artar
+            # Mevsimsel etki: Ocak ve Temmuz'da gecikme biraz artar
+            seasonal_boost = 5 if due_date.month in (1, 7) else 0
             holiday_boost = 10 if is_near_holiday(due_date) else 0
+            total_boost = seasonal_boost + holiday_boost
+ 
             w = {
-                'odendi':    max(0, weights['odendi'] - holiday_boost),
-                'gecikmeli': weights['gecikmeli'] + holiday_boost // 2,
-                'odenmedi':  weights['odenmedi'] + holiday_boost // 2,
+                'odendi':    max(1, weights['odendi'] - total_boost),
+                'gecikmeli': weights['gecikmeli'] + total_boost // 2,
+                'odenmedi':  weights['odenmedi'] + total_boost // 2,
             }
  
             outcome = random.choices(
@@ -295,17 +293,14 @@ def generate_payments(subscriptions, plans):
             )[0]
  
             if outcome == 'odendi':
-                # erken veya zamanında: -5 ile +3 gün
                 days_late = random.randint(-5, 3)
                 payment_date = due_date + timedelta(days=days_late)
                 amount_paid = amount_due
                 payment_status = 'odendi'
  
             elif outcome == 'gecikmeli':
-                # üstel dağılım — çoğu 1-15 gün, az sayısı uzun
                 days_late = _gecikme_gun_uret(0.5)
                 payment_date = due_date + timedelta(days=days_late)
-                # kısmi ödeme: %30 ihtimalle
                 if random.random() < 0.30:
                     amount_paid = round(amount_due * random.uniform(0.5, 0.95), 2)
                     payment_status = 'kismi'
@@ -380,56 +375,38 @@ def generate_lottery(subscriptions, plans):
 
     logger.info(f'{len(lottery)} kura kaydı üretildi.')
     return lottery
-def inject_dirty_data(members, payments):
-         """
-    Gerçek hayat veri kirliliklerini simüle eder.
-    ETL pipeline'ının temizleme adımını test etmek için kasıtlı olarak
-    bozuk veri enjekte eder.
-
-    Kirlilikler:
-        - %2 üyede eksik tc_hash (NULL)
-        - %1 üye duplike (aynı member_id, farklı loaded_at)
-        - %0.5 ödemede geçersiz tutar (negatif)
-        - %0.3 ödemede tutarsız tarih (payment_date < due_date ama days_late > 0)
-
-    Parametreler:
-        members  (list[dict])
-        payments (list[dict])
-    Döndürür:
-        members, payments (kirli versiyonlar)
+def inject_dirty_data(members, payments, subscriptions):
     """
-    # 1. %2 üyede tc_hash → None
-         null_tc_count = int(len(members) * 0.02)
-         for m in random.sample(members, null_tc_count):
-          m['tc_hash'] = None
+    Gerçek hayat veri kirliliklerini simüle eder.
+    """
+    # %2 üyede tc_hash → Null
+    null_tc_count = int(len(members) * 0.02)
+    for m in random.sample(members, null_tc_count):
+        m['tc_hash'] = None
 
-         logger.info(f'Kirli veri: {null_tc_count} üyede tc_hash NULL yapıldı.')
+    # %1 üyeyi duplike eder
+    dupe_count = int(len(members) * 0.01)
+    dupes = random.sample(members, dupe_count)
+    members.extend(dupes)
 
-    # 2. %1 üyeyi duplike et (aynı kayıt tekrar eklenir)
-         dupe_count = int(len(members) * 0.01)
-         dupes = random.sample(members, dupe_count)
-         members.extend(dupes)
-         logger.info(f'Kirli veri: {dupe_count} üye duplike edildi. Toplam: {len(members)}')
+    # %0.5 ödemede geçersiz tutar
+    invalid_amount_count = int(len(payments) * 0.005)
+    for p in random.sample(payments, invalid_amount_count):
+        p['amount_paid'] = round(random.uniform(-9999, -1), 2)
 
-    # 3. %0.5 ödemede geçersiz tutar
-         invalid_amount_count = int(len(payments) * 0.005)
-         for p in random.sample(payments, invalid_amount_count):
-          p['amount_paid'] = round(random.uniform(-9999, -1), 2)
-         
-         logger.info(f'Kirli veri: {invalid_amount_count} ödemede geçersiz tutar.')
-
-    # 4. %0.3 ödemede tutarsız tarih
-    #    days_late pozitif ama payment_date due_date'den önce gösterilir
-         inconsistent_count = int(len(payments) * 0.003)
-         for p in random.sample(payments, inconsistent_count):
-          if p['payment_date'] is not None and p['days_late'] is not None:
+    # %0.3 ödemede tutarsız tarih
+    inconsistent_count = int(len(payments) * 0.003)
+    for p in random.sample(payments, inconsistent_count):
+        if p['payment_date'] is not None and p['days_late'] is not None:
             p['payment_date'] = p['due_date'] - timedelta(days=random.randint(1, 10))
-            p['days_late'] = random.randint(5, 30)  # tarihle çelişiyor
-         
-         logger.info(f'Kirli veri: {inconsistent_count} ödemede tutarsız tarih.')
+            p['days_late'] = random.randint(5, 30)
 
-         return members, payments
+    # %0.2 abonelikte tutarsız tarih
+    sub_inconsistent_count = int(len(subscriptions) * 0.002)
+    for s in random.sample(subscriptions, sub_inconsistent_count):
+        s['expected_end_date'] = s['start_date'] - timedelta(days=random.randint(1, 30))
 
+    return members, payments, subscriptions
 
 def save_to_staging(conn, members, plans, subscriptions, payments, lottery):
     """
@@ -529,8 +506,7 @@ if __name__ == '__main__':
     lottery       = generate_lottery(subscriptions, plans)
 
     # Kirli veri enjeksiyonu
-    members, payments = inject_dirty_data(members, payments)
-
+    members, payments, subscriptions = inject_dirty_data(members, payments, subscriptions)
     conn = get_db_connection()
     try:
         save_to_staging(conn, members, plans, subscriptions, payments, lottery)

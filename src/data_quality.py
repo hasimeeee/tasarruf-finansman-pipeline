@@ -217,3 +217,18 @@ def check_dwh(cur):
     ))
 
     return results 
+if __name__ == "__main__":
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    print("Data Quality checks başlıyor...")
+
+    staging_results = check_staging(cur)
+    dwh_results = check_dwh(cur)
+
+    print("STAGING:", staging_results)
+    print("DWH:", dwh_results)
+
+    cur.close()
+    conn.close()

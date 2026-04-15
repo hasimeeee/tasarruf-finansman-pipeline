@@ -28,31 +28,25 @@ def section(title):
      print(f"\n{'='*55}")
      print(f"{title}")
      print(f"{'='*55}")
-     
+
 for row in city_dist:
         print(f"{row[0]:<12}: {row[1]:>6,}")
 
-status_dist = run_query(cursor, "SELECT status, COUNT(*)...")
-for row in status_dist:
-      print(f"{row[0]:<12}: {row[1]:>6,}")
-
 def main():
-      conn = get_connection()
-      cursor = conn.cursor()
+    conn = get_connection()
+    cursor = conn.cursor()
 
-try:
+    try:
         profile_members(cursor)
         profile_plans(cursor)
 
-except Exception as e :
+    except Exception as e:
         logger.error(f"Hata: {e}")
         raise
-finally:
+
+    finally:
         cursor.close()
         conn.close()
-
-if __name__ == "__main__":
-       main()
        
 
 
