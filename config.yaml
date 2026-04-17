@@ -1,0 +1,34 @@
+database:
+  host: localhost
+  port: 5432
+  name: tasarruf_finansman
+  user: postgres
+  password: "2491"
+
+pipeline:
+  batch_size: 1000
+  log_level: INFO
+
+data_generation:
+  num_members: 15000
+  num_plans: 5
+  start_date: "2022-01-01"
+  end_date: "2026-04-01"
+
+cities:
+  weights:
+    Istanbul: 30
+    Ankara: 15
+    Konya: 10
+    Izmir: 8
+    Bursa: 6
+    Gaziantep: 5
+    Kayseri: 4
+    Diyarbakir: 3
+    Antalya: 3
+    Adana: 3
+    Samsun: 2
+    Trabzon: 2
+    Eskisehir: 2
+    Mersin: 2
+    Diger: 5
