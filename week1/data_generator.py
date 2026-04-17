@@ -409,11 +409,24 @@ def inject_dirty_data(members, payments, subscriptions):
     return members, payments, subscriptions
 
 def save_to_staging(conn, members, plans, subscriptions, payments, lottery):
-    """
-    Tüm veriyi PostgreSQL staging şemasına toplu yazar.
-    Hata olursa rollback — ya hepsi yazılır ya hiçbiri.
-    """
     cur = conn.cursor()
+    try:
+        # ✅ Her çalıştırmada tabloları temizle
+        logger.info('Staging tabloları temizleniyor...')
+        cur.execute("""
+            TRUNCATE TABLE 
+                staging.lottery,
+                staging.payments,
+                staging.subscriptions,
+                staging.members,
+                staging.plans
+            RESTART IDENTITY CASCADE;
+        """)
+        logger.info('Tablolar temizlendi.')
+    except Exception as e:
+        logger.error(f'Tablolar temizlenirken hata oluştu: {e}')
+        raise
+
     try:
         logger.info('staging.members yazılıyor...')
         execute_values(cur,
