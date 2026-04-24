@@ -1,0 +1,42 @@
+2026-04-24 13:11:37,327 [INFO] ==================================================
+2026-04-24 13:11:37,327 [INFO] ETL Pipeline basliyor...
+2026-04-24 13:11:37,359 [INFO] dim_date yukleniyor...
+2026-04-24 13:11:45,198 [ERROR] [HATA] dim_date: update or delete on table "dim_date" violates foreign key constraint "fact_payments_date_key_fkey" on table "fact_payments"
+DETAIL:  Key (date_key)=(20211229) is still referenced from table "fact_payments".
+
+2026-04-24 13:11:45,206 [INFO] dim_plan yukleniyor...
+2026-04-24 13:11:45,217 [ERROR] [HATA] dim_plan: update or delete on table "dim_plan" violates foreign key constraint "fact_payments_plan_key_fkey" on table "fact_payments"
+DETAIL:  Key (plan_key)=(6) is still referenced from table "fact_payments".
+
+2026-04-24 13:11:45,222 [INFO] dim_member yukleniyor...
+2026-04-24 13:11:45,410 [ERROR] [HATA] dim_member: update or delete on table "dim_member" violates foreign key constraint "fact_payments_member_key_fkey" on table "fact_payments"
+DETAIL:  Key (member_key)=(13801) is still referenced from table "fact_payments".
+
+2026-04-24 13:11:45,421 [INFO] fact_payments yukleniyor...
+2026-04-24 13:12:03,813 [INFO] fact_payments: 335697 kayit yuklendi.
+2026-04-24 13:12:03,936 [INFO] [OK] fact_payments: 335697 satir, 18.51 sn
+2026-04-24 13:12:03,936 [INFO] fact_lottery yukleniyor...
+2026-04-24 13:12:04,547 [INFO] fact_lottery: 13691 kayit yuklendi.
+2026-04-24 13:12:04,551 [INFO] [OK] fact_lottery: 13691 satir, 0.61 sn
+2026-04-24 13:12:04,552 [INFO] Pipeline tamamlandi. Toplam sure: 27.22 sn
+2026-04-24 13:12:04,552 [INFO] ==================================================
+2026-04-24 13:18:42,230 [INFO] ==================================================
+2026-04-24 13:18:42,231 [INFO] ETL Pipeline basliyor...
+2026-04-24 13:18:42,306 [INFO] Tüm tablolar temizlendi.
+2026-04-24 13:18:42,306 [INFO] dim_date yukleniyor...
+2026-04-24 13:18:42,399 [INFO] dim_date: 2922 gun yuklendi.
+2026-04-24 13:18:42,407 [INFO] [OK] dim_date: 2922 satir, 0.09 sn
+2026-04-24 13:18:42,407 [INFO] dim_plan yukleniyor...
+2026-04-24 13:18:42,418 [INFO] dim_plan: 5 plan yuklendi.
+2026-04-24 13:18:42,422 [INFO] [OK] dim_plan: 5 satir, 0.01 sn
+2026-04-24 13:18:42,422 [INFO] dim_member yukleniyor...
+2026-04-24 13:18:43,385 [INFO] dim_member: 13800 uye yuklendi.
+2026-04-24 13:18:43,397 [INFO] [OK] dim_member: 13800 satir, 0.97 sn
+2026-04-24 13:18:43,397 [INFO] fact_payments yukleniyor...
+2026-04-24 13:18:59,552 [INFO] fact_payments: 335266 kayit yuklendi.
+2026-04-24 13:18:59,671 [INFO] [OK] fact_payments: 335266 satir, 16.27 sn
+2026-04-24 13:18:59,671 [INFO] fact_lottery yukleniyor...
+2026-04-24 13:19:00,224 [INFO] fact_lottery: 13770 kayit yuklendi.
+2026-04-24 13:19:00,229 [INFO] [OK] fact_lottery: 13770 satir, 0.55 sn
+2026-04-24 13:19:00,229 [INFO] Pipeline tamamlandi. Toplam sure: 18.0 sn
+2026-04-24 13:19:00,229 [INFO] ==================================================
