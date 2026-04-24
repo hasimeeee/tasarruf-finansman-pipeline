@@ -40,3 +40,23 @@ DETAIL:  Key (member_key)=(13801) is still referenced from table "fact_payments"
 2026-04-24 13:19:00,229 [INFO] [OK] fact_lottery: 13770 satir, 0.55 sn
 2026-04-24 13:19:00,229 [INFO] Pipeline tamamlandi. Toplam sure: 18.0 sn
 2026-04-24 13:19:00,229 [INFO] ==================================================
+2026-04-24 14:51:50,940 [INFO] ==================================================
+2026-04-24 14:51:50,940 [INFO] ETL Pipeline basliyor...
+2026-04-24 14:51:51,044 [INFO] Tüm tablolar temizlendi.
+2026-04-24 14:51:51,045 [INFO] dim_date yukleniyor...
+2026-04-24 14:51:51,197 [INFO] dim_date: 2922 gun yuklendi.
+2026-04-24 14:51:51,208 [INFO] [OK] dim_date: 2922 satir, 0.15 sn
+2026-04-24 14:51:51,208 [INFO] dim_plan yukleniyor...
+2026-04-24 14:51:51,223 [INFO] dim_plan: 5 plan yuklendi.
+2026-04-24 14:51:51,227 [INFO] [OK] dim_plan: 5 satir, 0.01 sn
+2026-04-24 14:51:51,227 [INFO] dim_member yukleniyor...
+2026-04-24 14:51:52,359 [INFO] dim_member: 13800 uye yuklendi.
+2026-04-24 14:51:52,375 [INFO] [OK] dim_member: 13800 satir, 1.14 sn
+2026-04-24 14:51:52,375 [INFO] fact_payments yukleniyor...
+2026-04-24 14:52:10,096 [INFO] fact_payments: 335266 kayit yuklendi.
+2026-04-24 14:52:10,230 [INFO] [OK] fact_payments: 335266 satir, 17.85 sn
+2026-04-24 14:52:10,230 [INFO] fact_lottery yukleniyor...
+2026-04-24 14:52:11,382 [INFO] fact_lottery: 13770 kayit yuklendi.
+2026-04-24 14:52:11,415 [INFO] [OK] fact_lottery: 13770 satir, 1.18 sn
+2026-04-24 14:52:11,416 [INFO] Pipeline tamamlandi. Toplam sure: 20.48 sn
+2026-04-24 14:52:11,416 [INFO] ==================================================
