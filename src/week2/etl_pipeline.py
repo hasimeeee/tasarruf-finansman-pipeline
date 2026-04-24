@@ -11,6 +11,7 @@ from datetime import date, timedelta
 import time
 import logging
 import os
+from dateutil.relativedelta import relativedelta
 from transformers import (
     transform_dim_date_record,
     transform_dim_plan_record,
@@ -19,9 +20,7 @@ from transformers import (
     transform_fact_lottery_record,
 )
 
-# ==========================================
 # LOGLAMA: hem konsol hem dosya
-# ==========================================
 os.makedirs("logs", exist_ok=True)
 
 log = logging.getLogger("etl_pipeline")
@@ -40,9 +39,7 @@ fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 log.addHandler(ch)
 log.addHandler(fh)
 
-# ==========================================
 # CONFIG & BAĞLANTI
-# ==========================================
 import os
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 with open(os.path.join(BASE_DIR, "config.yaml"), "r") as f:
@@ -69,9 +66,7 @@ def log_pipeline_run(conn, stage: str, status: str, rows: int = 0,
     conn.commit()
 
 
-# ==========================================
 # LOAD FONKSİYONLARI
-# ==========================================
 
 def load_dim_date(conn):
     log.info("dim_date yukleniyor...")
@@ -200,7 +195,9 @@ def load_fact_lottery(conn):
             dp.plan_key,
             TO_CHAR(sl.lottery_date, 'YYYYMMDD')::INT AS date_key,
             sl.lottery_round,
-            sl.is_winner
+            sl.is_winner,
+            sl.member_id,
+            sl.lottery_date
         FROM staging_lottery sl
         JOIN dim_member dm ON dm.member_id = sl.member_id AND dm.is_current = TRUE
         JOIN dim_plan   dp ON dp.plan_id   = sl.plan_id
@@ -208,9 +205,53 @@ def load_fact_lottery(conn):
     """)
     rows = cur.fetchall()
 
-    records = [transform_fact_lottery_record(row) for row in rows]
+    # Her üye için kura tarihine kadar ödenen taksit sayısını hesapla
+    cur.execute("""
+        SELECT
+            member_id,
+            due_date,
+            payment_status
+        FROM staging_payments
+        WHERE payment_status IN ('odendi', 'kismi', 'gecikmeli')
+    """)
+    payments = cur.fetchall()
+
+    # member_id → [(due_date, status)] lookup
+    from collections import defaultdict
+    member_payments = defaultdict(list)
+    for member_id, due_date, status in payments:
+        member_payments[member_id].append(due_date)
 
     cur.execute("DELETE FROM fact_lottery")
+
+    records = []
+    for row in rows:
+        lottery_id, member_key, plan_key, date_key, \
+        lottery_round, is_winner, member_id, lottery_date = row
+
+        # Kura tarihine kadar kaç taksit ödendi
+        paid_before_lottery = sum(
+            1 for d in member_payments[member_id]
+            if d <= lottery_date
+        )
+
+        # Kura tarihine kadar kaç ay geçmiş
+        from dateutil.relativedelta import relativedelta
+        months_elapsed = (
+            (lottery_date.year - 2022) * 12 + lottery_date.month
+        ) - (
+            (2022 - 2022) * 12 + 1
+        )
+        months_elapsed = max(1, months_elapsed)
+
+        ratio = round(paid_before_lottery / months_elapsed, 4)
+        ratio = min(ratio, 1.0)  # 1.0'ı geçemez
+
+        records.append((
+            lottery_id, member_key, plan_key, date_key,
+            lottery_round, is_winner, ratio
+        ))
+
     execute_values(cur, """
         INSERT INTO fact_lottery
         (lottery_id, member_key, plan_key, date_key,
@@ -218,14 +259,13 @@ def load_fact_lottery(conn):
         VALUES %s
         ON CONFLICT (lottery_id) DO NOTHING
     """, records, page_size=1000)
+
     conn.commit()
     log.info(f"fact_lottery: {len(records)} kayit yuklendi.")
     return len(records)
 
 
-# ==========================================
 # ANA PIPELINE
-# ==========================================
 
 def run_pipeline():
     log.info("=" * 50)
