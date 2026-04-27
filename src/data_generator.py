@@ -89,6 +89,8 @@ def generate_members(num_members):
         district   = fake.city()
         birth_date = fake.date_of_birth(minimum_age=18, maximum_age=65)
         birth_year = birth_date.year
+        phone = fake.phone_number()
+        email = fake.email()
         income     = round(random.choices(
             population=[20000, 35000, 55000, 85000, 150000],
             weights=[15, 30, 25, 20, 10], k=1
@@ -101,15 +103,18 @@ def generate_members(num_members):
         full_name = fake.name()
 
         members.append({
-            'member_id':     f'M{i+1:05d}',
-            'full_name':     full_name,
-            'tc_hash':       tc_hash,
-            'city':          city,
-            'district':      district,
-            'birth_year':    birth_year,
-            'income':        income,
-            'signup_date':   signup_date,
-            'status':        member_status,
+            'member_id':   f'M{i+1:05d}',
+            'full_name':   full_name,
+            'tc_hash':     tc_hash,
+            'city':        city,
+            'district':    district,
+            'birth_year':  birth_year,
+            'birth_date':  birth_date,    # ← ekle
+            'income':      income,
+            'signup_date': signup_date,
+            'status':      member_status,
+            'phone':       phone,          # ← ekle
+            'email':       email,          # ← ekle
         })
 
     logger.info(f'{num_members} üye üretildi.')
@@ -299,22 +304,25 @@ def save_to_staging(conn, members, plans, payments, lottery):
     cur = conn.cursor()
 
     logger.info('Staging tabloları temizleniyor...')
-    cur.execute("TRUNCATE staging_members, staging_plans, staging_payments, staging_lottery RESTART IDENTITY CASCADE")
+    cur.execute("TRUNCATE staging.members, staging.plans, staging.payments, staging.lottery RESTART IDENTITY CASCADE")
     conn.commit()
 
-    logger.info('staging_members yazılıyor...')
+    logger.info('staging.members yazılıyor...')
     execute_values(cur,
-        """INSERT INTO staging_members
-           (member_id, full_name, tc_hash, city, district, birth_year, income, signup_date, status)
+        """INSERT INTO staging.members
+           (member_id, full_name, tc_hash, city, district, 
+            birth_year, birth_date, income, signup_date, status,
+            phone, email)
            VALUES %s""",
         [(m['member_id'], m['full_name'], m['tc_hash'], m['city'], m['district'],
-          m['birth_year'], m['income'], m['signup_date'], m['status']) for m in members]
+          m['birth_year'], m['birth_date'], m['income'], m['signup_date'], m['status'],
+          m['phone'], m['email']) for m in members]
     )
     logger.info(f'  -> {len(members)} satır eklendi.')
 
-    logger.info('staging_plans yazılıyor...')
+    logger.info('staging.plans yazılıyor...')
     execute_values(cur,
-        """INSERT INTO staging_plans
+        """INSERT INTO staging.plans
            (plan_id, plan_name, plan_type, duration_months, target_amount, monthly_installment)
            VALUES %s""",
         [(p['plan_id'], p['plan_name'], p['plan_type'], p['duration_months'],
@@ -322,9 +330,9 @@ def save_to_staging(conn, members, plans, payments, lottery):
     )
     logger.info(f'  -> {len(plans)} satır eklendi.')
 
-    logger.info('staging_payments yazılıyor...')
+    logger.info('staging.payments yazılıyor...')
     execute_values(cur,
-        """INSERT INTO staging_payments
+        """INSERT INTO staging.payments
            (payment_id, member_id, plan_id, installment_no, due_date, paid_date,
             due_amount, paid_amount, payment_status)
            VALUES %s""",
@@ -334,9 +342,9 @@ def save_to_staging(conn, members, plans, payments, lottery):
     )
     logger.info(f'  -> {len(payments)} satır eklendi.')
 
-    logger.info('staging_lottery yazılıyor...')
+    logger.info('staging.lottery yazılıyor...')
     execute_values(cur,
-        """INSERT INTO staging_lottery
+        """INSERT INTO staging.lottery
            (lottery_id, member_id, plan_id, lottery_date, lottery_round, is_winner)
            VALUES %s""",
         [(l['lottery_id'], l['member_id'], l['plan_id'], l['lottery_date'],
