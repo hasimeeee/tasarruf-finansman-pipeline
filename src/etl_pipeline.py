@@ -251,7 +251,8 @@ def load_fact_lottery(conn):
             sl.lottery_round,
             sl.is_winner,
             sl.member_id,
-            sl.lottery_date
+            sl.lottery_date,
+            dm.signup_date
         FROM staging.lottery sl
         JOIN dim_member dm ON dm.member_id = sl.member_id AND dm.is_current = TRUE
         JOIN dim_plan   dp ON dp.plan_id   = sl.plan_id
@@ -259,7 +260,7 @@ def load_fact_lottery(conn):
     """)
     rows = cur.fetchall()
 
-    # Her üye için kura tarihine kadar ödenen taksit sayısını hesapla
+    # Her üye için ödenmiş taksitleri al
     cur.execute("""
         SELECT
             member_id,
@@ -270,7 +271,6 @@ def load_fact_lottery(conn):
     """)
     payments = cur.fetchall()
 
-    # member_id → [(due_date, status)] lookup
     from collections import defaultdict
     member_payments = defaultdict(list)
     for member_id, due_date, status in payments:
@@ -278,28 +278,30 @@ def load_fact_lottery(conn):
 
     cur.execute("DELETE FROM fact_lottery")
 
+    from dateutil.relativedelta import relativedelta
+
     records = []
     for row in rows:
-        lottery_id, member_key, plan_key, date_key, \
-        lottery_round, is_winner, member_id, lottery_date = row
+        (
+            lottery_id, member_key, plan_key, date_key,
+            lottery_round, is_winner, member_id,
+            lottery_date, signup_date
+        ) = row
 
-        # Kura tarihine kadar kaç taksit ödendi
+        # Kura tarihine kadar ödenen taksit sayısı
         paid_before_lottery = sum(
             1 for d in member_payments[member_id]
             if d <= lottery_date
         )
 
-        # Kura tarihine kadar kaç ay geçmiş
-        from dateutil.relativedelta import relativedelta
-        months_elapsed = (
-            (lottery_date.year - 2022) * 12 + lottery_date.month
-        ) - (
-            (2022 - 2022) * 12 + 1
+        delta = relativedelta(lottery_date, signup_date)
+        months_elapsed = max(
+            1,
+            delta.years * 12 + delta.months + (1 if delta.days > 0 else 0)
         )
-        months_elapsed = max(1, months_elapsed)
 
         ratio = round(paid_before_lottery / months_elapsed, 4)
-        ratio = min(ratio, 1.0)  # 1.0'ı geçemez
+        ratio = min(ratio, 1.0)
 
         records.append((
             lottery_id, member_key, plan_key, date_key,
@@ -317,7 +319,6 @@ def load_fact_lottery(conn):
     conn.commit()
     log.info(f"fact_lottery: {len(records)} kayit yuklendi.")
     return len(records)
-
 
 # ANA PIPELINE
 
