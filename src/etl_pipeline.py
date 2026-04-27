@@ -4,12 +4,11 @@ Hafta 2: Staging -> Star Schema
 Transform fonksiyonları: src/transformers.py
 """
 
-import yaml
 import psycopg2
 from psycopg2.extras import execute_values
 from datetime import date, timedelta
 import time
-import logging
+import sys
 import os
 from dateutil.relativedelta import relativedelta
 from transformers import (
@@ -20,31 +19,13 @@ from transformers import (
     transform_fact_lottery_record,
 )
 
-# LOGLAMA: hem konsol hem dosya
-os.makedirs("logs", exist_ok=True)
+sys.path.append(os.path.dirname(__file__))
+from config_loader import load_config
+from utils.logger import get_logger
 
-log = logging.getLogger("etl_pipeline")
-log.setLevel(logging.INFO)
+log = get_logger("etl_pipeline")
 
-# Konsol handler
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-ch.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
-
-# Dosya handler
-fh = logging.FileHandler("logs/pipeline.log", encoding="utf-8")
-fh.setLevel(logging.INFO)
-fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
-
-log.addHandler(ch)
-log.addHandler(fh)
-
-# CONFIG & BAĞLANTI
-import os
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-with open(os.path.join(BASE_DIR, "config.yaml"), "r") as f:
-    config = yaml.safe_load(f)
-
+config = load_config()
 _db = config["database"].copy()
 if "name" in _db:
     _db["dbname"] = _db.pop("name")
@@ -99,7 +80,7 @@ def load_dim_plan(conn):
 
     cur.execute("""
         SELECT DISTINCT plan_id, plan_name, plan_type, duration_months, target_amount
-        FROM staging_plans
+        FROM staging.plans
     """)
     rows = cur.fetchall()
 
@@ -124,7 +105,7 @@ def load_dim_member(conn):
         SELECT DISTINCT ON (tc_hash)
             member_id, full_name, tc_hash, city, district,
             birth_year, income, signup_date, status
-        FROM staging_members
+        FROM staging.members
         WHERE tc_hash IS NOT NULL AND tc_hash != ''
         ORDER BY tc_hash, signup_date DESC
     """)
@@ -145,6 +126,79 @@ def load_dim_member(conn):
     log.info(f"dim_member: {len(records)} uye yuklendi.")
     return len(records)
 
+def load_dim_member_scd2(conn):
+    log.info("dim_member SCD' yukleniyor...")
+    cur = conn.cursor()
+    today = date.today()
+
+    inserted = 0
+    updated = 0
+    skipped = 0
+    #stagingden temiz üyelerı çeker
+    cur.execute("""
+        SELECT DISTINCT ON (tc_hash)
+            member_id, full_name, tc_hash, city, district,
+            birth_year, income, signup_date, status
+        FROM staging.members
+        WHERE tc_hash IS NOT NULL AND tc_hash != ''
+        ORDER BY tc_hash, signup_date DESC
+    """)
+    staging_rows = cur.fetchall()
+    log.info(f"Staging'den {len(staging_rows)} kayit alindi.")
+    # 2. dim_member'daki aktif kayıtları tek sorguda çek  ← BURAYA
+    cur.execute("""
+        SELECT member_id, member_status
+        FROM dim_member
+        WHERE is_current = TRUE
+    """)
+    existing_members = {row[0]: row[1] for row in cur.fetchall()}
+    log.info(f"dim_member'dan {len(existing_members)} aktif kayit alindi.")
+    for row in staging_rows:
+        member_id = row[0]
+        existing = existing_members.get(member_id)
+        #dim_member'da bu üye var mı?
+        if existing is None:
+            # İHTİMAL 1: Yeni üye → direkt ekle
+            record = transform_dim_member_record(row)
+            cur.execute("""
+                INSERT INTO dim_member
+                (member_id, full_name, tc_hash, city, district,
+                 age_group, income_bracket, signup_date,
+                 member_status, churn_date,
+                 valid_from, valid_to, is_current)
+                VALUES %s
+            """, (record,))
+            inserted += 1
+
+        elif existing != row[8]:   # existing[1] değil, direkt existing
+            # İHTİMAL 2: Statü değişmiş
+            # ADIM 1 → Eski kaydı kapat
+            cur.execute("""
+                UPDATE dim_member
+                SET valid_to = %s, is_current = FALSE
+                WHERE member_id = %s AND is_current = TRUE
+            """, (today, member_id))
+            
+            # ADIM 2 → Yeni kayıt ekle
+            record = transform_dim_member_record(row)
+            cur.execute("""
+                INSERT INTO dim_member
+                (member_id, full_name, tc_hash, city, district,
+                 age_group, income_bracket, signup_date,
+                 member_status, churn_date,
+                 valid_from, valid_to, is_current)
+                VALUES %s
+            """, (record,))
+            updated += 1
+
+        else:
+            # İHTİMAL 3: Değişiklik yok → dokunma
+            skipped += 1
+
+    conn.commit()
+    cur.close()
+    log.info(f"dim_member SCD2 tamamlandi: {inserted} eklendi, {updated} guncellendi, {skipped} atlandi.")
+    return inserted + updated + skipped
 
 def load_fact_payments(conn):
     log.info("fact_payments yukleniyor...")
@@ -161,7 +215,7 @@ def load_fact_payments(conn):
             sp.paid_amount,
             sp.due_date,
             sp.paid_date
-        FROM staging_payments sp
+        FROM staging.payments sp
         JOIN dim_member dm ON dm.member_id = sp.member_id AND dm.is_current = TRUE
         JOIN dim_plan   dp ON dp.plan_id   = sp.plan_id
         WHERE sp.payment_id IS NOT NULL
@@ -198,7 +252,7 @@ def load_fact_lottery(conn):
             sl.is_winner,
             sl.member_id,
             sl.lottery_date
-        FROM staging_lottery sl
+        FROM staging.lottery sl
         JOIN dim_member dm ON dm.member_id = sl.member_id AND dm.is_current = TRUE
         JOIN dim_plan   dp ON dp.plan_id   = sl.plan_id
         WHERE sl.lottery_id IS NOT NULL
@@ -211,7 +265,7 @@ def load_fact_lottery(conn):
             member_id,
             due_date,
             payment_status
-        FROM staging_payments
+        FROM staging.payments
         WHERE payment_status IN ('odendi', 'kismi', 'gecikmeli')
     """)
     payments = cur.fetchall()
@@ -277,7 +331,7 @@ def run_pipeline():
     cur = conn.cursor()
     cur.execute("""
     TRUNCATE fact_lottery, fact_payments, 
-             dim_member, dim_plan, dim_date 
+             dim_plan, dim_date 
     RESTART IDENTITY CASCADE
     """)
     conn.commit()
@@ -286,7 +340,7 @@ def run_pipeline():
     steps = [
         ("dim_date",      load_dim_date),
         ("dim_plan",      load_dim_plan),
-        ("dim_member",    load_dim_member),
+        ("dim_member",    load_dim_member_scd2),
         ("fact_payments", load_fact_payments),
         ("fact_lottery",  load_fact_lottery),
     ]

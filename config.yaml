@@ -32,3 +32,8 @@ cities:
     Eskisehir: 2
     Mersin: 2
     Diger: 5
+
+scheduler:                       
+  enabled: true
+  run_time: "02:00"
+  timezone: "Europe/Istanbul"
