@@ -1,14 +1,14 @@
 --  STAR SCHEMA (DWH)
 
 -- Dimension: Tarih
-CREATE TABLE IF NOT EXISTS dwh.dim_date (
+CREATE TABLE IF NOT EXISTS dim_date (
     date_key        INTEGER PRIMARY KEY,    -- YYYYMMDD formatında (örn: 20240315)
     full_date       DATE NOT NULL,
     day             SMALLINT,
     month           SMALLINT,
     quarter         SMALLINT,
     year            SMALLINT,
-    day_of_week     SMALLINT,               -- 1=Pazartesi … 7=Pazar
+    day_of_week     VARCHAR(15),               -- 1=Pazartesi … 7=Pazar
     day_name        VARCHAR(15),
     month_name      VARCHAR(15),
     is_weekend      BOOLEAN DEFAULT FALSE,
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS dwh.dim_date (
 );
 
 -- Dimension: Üye (SCD Type 2)
-CREATE TABLE IF NOT EXISTS dwh.dim_member (
+CREATE TABLE IF NOT EXISTS dim_member (
     member_key      SERIAL PRIMARY KEY,     -- surrogate key
     member_id       VARCHAR(20) NOT NULL,   -- business key
     full_name       VARCHAR(100),
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS dwh.dim_member (
 );
 
 -- Dimension: Plan
-CREATE TABLE IF NOT EXISTS dwh.dim_plan (
+CREATE TABLE IF NOT EXISTS dim_plan (
     plan_key            SERIAL PRIMARY KEY,
     plan_id             VARCHAR(20) NOT NULL,
     plan_name           VARCHAR(100),
@@ -48,22 +48,24 @@ CREATE TABLE IF NOT EXISTS dwh.dim_plan (
 );
 
 -- Dimension: Şube
-CREATE TABLE IF NOT EXISTS dwh.dim_branch (
+CREATE TABLE IF NOT EXISTS dim_branch (
     branch_key  SERIAL PRIMARY KEY,
-    branch_id   VARCHAR(20) NOT NULL,
+    branch_id   VARCHAR(20) NOT NULL UNIQUE,
     branch_name VARCHAR(100),
     city        VARCHAR(50),
     region      VARCHAR(50),
-    open_date   DATE
+    open_date   DATE,
+    valid_from   DATE NOT NULL DEFAULT CURRENT_DATE,
+    valid_to     DATE,       -- NULL = güncel kayıt
+    is_current   BOOLEAN DEFAULT TRUE
 );
 
 -- Fact: Ödemeler
-CREATE TABLE IF NOT EXISTS dwh.fact_payments (
+CREATE TABLE IF NOT EXISTS fact_payments (
     payment_id      VARCHAR(20) PRIMARY KEY,
     member_key      INTEGER REFERENCES dwh.dim_member(member_key),
     plan_key        INTEGER REFERENCES dwh.dim_plan(plan_key),
     date_key        INTEGER REFERENCES dwh.dim_date(date_key),
-    subscription_id VARCHAR(15),
     installment_no  INTEGER,
     due_amount      NUMERIC(12, 2),
     paid_amount     NUMERIC(12, 2),
@@ -72,12 +74,11 @@ CREATE TABLE IF NOT EXISTS dwh.fact_payments (
 );
 
 -- Fact: Kura Çekilişleri
-CREATE TABLE IF NOT EXISTS dwh.fact_lottery (
+CREATE TABLE IF NOT EXISTS fact_lottery (
     lottery_id              VARCHAR(20) PRIMARY KEY,
     member_key              INTEGER REFERENCES dwh.dim_member(member_key),
     plan_key                INTEGER REFERENCES dwh.dim_plan(plan_key),
     date_key                INTEGER REFERENCES dwh.dim_date(date_key),
-    subscription_id         VARCHAR(15),
     lottery_round           INTEGER,
     is_winner               BOOLEAN DEFAULT FALSE,
     cumulative_paid_ratio   NUMERIC(5, 4)   -- ödenen / toplam taksit (0.00–1.00)
