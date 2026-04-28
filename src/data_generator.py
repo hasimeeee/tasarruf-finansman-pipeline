@@ -5,7 +5,6 @@ from psycopg2.extras import execute_values
 from faker import Faker
 from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
-import yaml
 import logging
 
 fake = Faker('tr_TR')
@@ -18,9 +17,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Config yükle
-with open("config.yaml", "r") as f:
-    config = yaml.safe_load(f)
+import sys
+import os
+sys.path.append(os.path.dirname(__file__))
+from config_loader import load_config
+config = load_config()
 
 # Şehir dağılımı
 CITIES = {

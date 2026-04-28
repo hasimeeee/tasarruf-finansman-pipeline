@@ -1,4 +1,4 @@
---  STAR SCHEMA (DWH)
+--  STAR SCHEMA 
 
 -- Dimension: Tarih
 CREATE TABLE IF NOT EXISTS dim_date (
@@ -63,9 +63,9 @@ CREATE TABLE IF NOT EXISTS dim_branch (
 -- Fact: Ödemeler
 CREATE TABLE IF NOT EXISTS fact_payments (
     payment_id      VARCHAR(20) PRIMARY KEY,
-    member_key      INTEGER REFERENCES dwh.dim_member(member_key),
-    plan_key        INTEGER REFERENCES dwh.dim_plan(plan_key),
-    date_key        INTEGER REFERENCES dwh.dim_date(date_key),
+    member_key      INTEGER REFERENCES dim_member(member_key),
+    plan_key        INTEGER REFERENCES dim_plan(plan_key),
+    date_key        INTEGER REFERENCES dim_date(date_key),
     installment_no  INTEGER,
     due_amount      NUMERIC(12, 2),
     paid_amount     NUMERIC(12, 2),
@@ -76,9 +76,9 @@ CREATE TABLE IF NOT EXISTS fact_payments (
 -- Fact: Kura Çekilişleri
 CREATE TABLE IF NOT EXISTS fact_lottery (
     lottery_id              VARCHAR(20) PRIMARY KEY,
-    member_key              INTEGER REFERENCES dwh.dim_member(member_key),
-    plan_key                INTEGER REFERENCES dwh.dim_plan(plan_key),
-    date_key                INTEGER REFERENCES dwh.dim_date(date_key),
+    member_key              INTEGER REFERENCES dim_member(member_key),
+    plan_key                INTEGER REFERENCES dim_plan(plan_key),
+    date_key                INTEGER REFERENCES dim_date(date_key),
     lottery_round           INTEGER,
     is_winner               BOOLEAN DEFAULT FALSE,
     cumulative_paid_ratio   NUMERIC(5, 4)   -- ödenen / toplam taksit (0.00–1.00)

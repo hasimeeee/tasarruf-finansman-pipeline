@@ -299,24 +299,16 @@ def load_fact_lottery(conn):
 
     records = []
     for row in rows:
-        (
-            lottery_id, member_key, plan_key, date_key,
-            lottery_round, is_winner, member_id,
-            lottery_date, signup_date
-        ) = row
+        lottery_id, member_key, plan_key, date_key, \
+        lottery_round, is_winner, member_id, lottery_date, signup_date = row
 
-        # Kura tarihine kadar ödenen taksit sayısı
         paid_before_lottery = sum(
             1 for d in member_payments[member_id]
             if d <= lottery_date
         )
 
-        # Düzeltme: signup_date bazlı hesap (sabit 2022-01 değil)
         delta = relativedelta(lottery_date, signup_date)
-        months_elapsed = max(
-            1,
-            delta.years * 12 + delta.months + (1 if delta.days > 0 else 0)
-        )
+        months_elapsed = max(1, delta.years * 12 + delta.months)
 
         ratio = round(paid_before_lottery / months_elapsed, 4)
         ratio = min(ratio, 1.0)
@@ -326,6 +318,7 @@ def load_fact_lottery(conn):
             lottery_round, is_winner, ratio
         ))
 
+    # Döngü bitti — şimdi toplu yaz
     execute_values(cur, """
         INSERT INTO fact_lottery
         (lottery_id, member_key, plan_key, date_key,
@@ -337,8 +330,6 @@ def load_fact_lottery(conn):
     conn.commit()
     log.info(f"fact_lottery: {len(records)} kayit yuklendi.")
     return len(records)
-
-
 # ==========================================
 # DATA QUALITY RAPORU — Satır Kaybı Özeti
 # ==========================================
@@ -360,22 +351,22 @@ def log_row_loss_report(conn):
     null_tc = cur.fetchone()[0]
 
     cur.execute("""
-        SELECT COUNT(*) FROM (
-            SELECT member_id FROM staging.members
-            WHERE tc_hash IS NOT NULL AND tc_hash != ''
-            GROUP BY tc_hash HAVING COUNT(*) > 1
-        ) t
+        SELECT COUNT(*) - COUNT(DISTINCT tc_hash) 
+        FROM staging.members
+        WHERE tc_hash IS NOT NULL AND tc_hash != ''
     """)
     duplicate_members = cur.fetchone()[0]
 
-    cur.execute("SELECT COUNT(*) FROM dim_member WHERE is_current = TRUE")
+    cur.execute("SELECT COUNT(DISTINCT member_id) FROM dim_member WHERE is_current = TRUE")
     dim_member_count = cur.fetchone()[0]
 
+    expected = staging_members_total - null_tc - duplicate_members
     log.info(f"staging.members  → toplam     : {staging_members_total}")
     log.info(f"  - NULL tc_hash filtresi      : {null_tc}")
     log.info(f"  - Duplike (tc_hash bazlı)    : {duplicate_members}")
+    log.info(f"  = Beklenen dim_member        : {expected}")
     log.info(f"  dim_member (is_current)      : {dim_member_count}")
-    log.info(f"  Açıklanamayan kayıp          : {staging_members_total - null_tc - duplicate_members - dim_member_count}")
+    log.info(f"  Fark (SCD2 birikimi dahil)   : {dim_member_count - expected}")
 
     # --- payments ---
     cur.execute("SELECT COUNT(*) FROM staging.payments")
