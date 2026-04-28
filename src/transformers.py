@@ -2,12 +2,21 @@
 Tasarruf Finansman - Transform Fonksiyonları
 Staging verisini star schema için hazırlar.
 Her fonksiyon ham veri alır, temizlenmiş/dönüştürülmüş veri döndürür.
+
+Değişiklikler:
+  - transform_fact_lottery_record kaldırıldı (dead code — etl_pipeline.py
+    kendi inline hesaplama yapıyordu, bu fonksiyon None döndürüyordu)
+  - get_age_group artık birth_year (int) veya birth_date (date) her ikisini
+    de kabul ediyor — staging.members artık DATE tipinde tutuyor
+  - transform_dim_member_record güncellenmiş sütun sırasıyla uyumlu
 """
 
 from datetime import date
 
 
+# ==========================================
 # LOOKUP TABLOLARI
+# ==========================================
 
 AGE_GROUPS = [
     (18, 25, "18-25"),
@@ -43,11 +52,26 @@ DAY_NAMES_TR = {
 }
 
 
+# ==========================================
 # YARDIMCI FONKSİYONLAR
+# ==========================================
 
-def get_age_group(birth_year: int) -> str:
-    """Doğum yılından yaş grubunu döndürür."""
-    age = date.today().year - (birth_year or 1980)
+def get_age_group(birth_value) -> str:
+    """
+    Doğum yılı (int) veya doğum tarihi (date) alır, yaş grubunu döndürür.
+    staging.members artık DATE tipinde saklıyor; her iki tip de destekleniyor.
+    """
+    today = date.today()
+    if isinstance(birth_value, date):
+        # Gerçek yaş hesabı — ay/gün farkını da hesaba katar
+        age = today.year - birth_value.year - (
+            1 if (today.month, today.day) < (birth_value.month, birth_value.day) else 0
+        )
+    elif isinstance(birth_value, int):
+        age = today.year - birth_value
+    else:
+        age = today.year - 1980  # fallback
+
     for lo, hi, label in AGE_GROUPS:
         if lo <= age <= hi:
             return label
@@ -107,7 +131,10 @@ def derive_payment_status(paid_date, days_late: int) -> str:
     else:
         return "zamaninda"
 
+
+# ==========================================
 # TRANSFORM FONKSİYONLARI
+# ==========================================
 
 def transform_dim_date_record(d: date) -> tuple:
     """
@@ -122,7 +149,7 @@ def transform_dim_date_record(d: date) -> tuple:
         d.month,
         get_quarter(d.month),
         d.year,
-        get_day_name(d),
+        get_day_name(d),        # VARCHAR(15) — DDL ile uyumlu
         d.weekday() >= 5,
         is_holiday(d),
         is_ramadan(d),
@@ -131,7 +158,7 @@ def transform_dim_date_record(d: date) -> tuple:
 
 def transform_dim_plan_record(row: tuple) -> tuple:
     """
-    staging_plans satırını dim_plan satırına dönüştürür.
+    staging.plans satırını dim_plan satırına dönüştürür.
     Giriş: (plan_id, plan_name, plan_type, duration_months, target_amount)
     Döndürür: (plan_id, plan_name, plan_type, duration_months,
                target_amount, monthly_installment)
@@ -143,40 +170,43 @@ def transform_dim_plan_record(row: tuple) -> tuple:
 
 def transform_dim_member_record(row: tuple) -> tuple:
     """
-    staging_members satırını dim_member satırına dönüştürür.
+    staging.members satırını dim_member satırına dönüştürür.
+
     Giriş: (member_id, full_name, tc_hash, city, district,
-            birth_year, income, signup_date, status)
+            birth_date, income, signup_date, member_status)
+    NOT: etl_pipeline.py sorgusu bu sırayla döndürüyor — değiştirme.
+
     Döndürür: (member_id, full_name, tc_hash, city, district,
                age_group, income_bracket, signup_date,
                member_status, churn_date, valid_from, valid_to, is_current)
     """
-    member_id, full_name, tc_hash, city, district, \
-    birth_year, income, signup_date, status = row
+    (member_id, full_name, tc_hash, city, district,
+     birth_date, income, signup_date, member_status) = row
 
-    today     = date.today()
-    ag        = get_age_group(birth_year or 1980)
-    ib        = get_income_bracket(income or 0)
-    churn     = today if status == "terk" else None
+    today      = date.today()
+    ag         = get_age_group(birth_date)          # DATE veya int her ikisi de çalışır
+    ib         = get_income_bracket(income or 0)
+    churn      = today if member_status == "terk" else None
     valid_from = signup_date or today
 
     return (
         member_id, full_name, tc_hash, city, district,
-        ag, ib, signup_date, status, churn,
+        ag, ib, signup_date, member_status, churn,
         valid_from, None, True
     )
 
 
 def transform_fact_payment_record(row: tuple) -> tuple:
     """
-    staging_payments + JOIN sonucunu fact_payments satırına dönüştürür.
+    staging.payments + JOIN sonucunu fact_payments satırına dönüştürür.
     Giriş: (payment_id, member_key, plan_key, date_key,
             installment_no, due_amount, paid_amount, due_date, paid_date)
     Döndürür: (payment_id, member_key, plan_key, date_key,
                installment_no, due_amount, paid_amount,
                days_late, payment_status)
     """
-    payment_id, member_key, plan_key, date_key, \
-    installment_no, due_amount, paid_amount, due_date, paid_date = row
+    (payment_id, member_key, plan_key, date_key,
+     installment_no, due_amount, paid_amount, due_date, paid_date) = row
 
     days_late = calc_days_late(due_date, paid_date)
     status    = derive_payment_status(paid_date, days_late)
@@ -186,15 +216,3 @@ def transform_fact_payment_record(row: tuple) -> tuple:
         installment_no, due_amount, paid_amount,
         days_late, status
     )
-
-
-def transform_fact_lottery_record(row: tuple) -> tuple:
-    """
-    staging_lottery + JOIN sonucunu fact_lottery satırına dönüştürür.
-    cumulative_paid_ratio ilerleyen haftalarda hesaplanacak, şimdilik NULL.
-    Giriş: (lottery_id, member_key, plan_key, date_key, lottery_round, is_winner)
-    Döndürür: (lottery_id, member_key, plan_key, date_key,
-               lottery_round, is_winner, cumulative_paid_ratio)
-    """
-    lottery_id, member_key, plan_key, date_key, lottery_round, is_winner = row
-    return (lottery_id, member_key, plan_key, date_key, lottery_round, is_winner, None)
