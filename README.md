@@ -151,20 +151,3 @@ dim_member ─── fact_payments ─── dim_plan
 
 **dim_member** SCD Type 2 ile takip edilir: statü değiştiğinde (aktif → gecikmeli → terk) eski kayıt `valid_to` ile kapatılır, yeni kayıt eklenir.
 
----
-
-## Güvenlik Notu
-
-`config.yaml`'daki `password` alanı şu an düz metin. Gerçek projede:
-
-1. `.env` dosyasına taşı
-2. `.gitignore`'a ekle
-3. `config_loader.py` zaten `os.getenv` ile okuyacak şekilde yazılmış
-
----
-
-## Bilinen Sınırlamalar / Hafta 3-4 Planı
-
-- `TRUNCATE + INSERT` stratejisi full reload yapar. Hafta 3'te `INSERT ON CONFLICT DO UPDATE` (UPSERT) ile gerçek idempotency'ye geçilecek.
-- `dim_branch` tablosu oluşturuldu ancak pipeline'a henüz entegre edilmedi.
-- SCD Type 2 statü geçiş simülasyonu (aktif → gecikmeli → terk) Hafta 3-4'te gerçek zaman serisi ile canlandırılacak.
