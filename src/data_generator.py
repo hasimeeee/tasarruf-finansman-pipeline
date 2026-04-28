@@ -31,6 +31,16 @@ CITIES = {
     'Eskisehir': 2, 'Mersin': 2, 'Diger': 5
 }
 
+# Şube bölge eşlemesi
+CITY_REGIONS = {
+    'Istanbul': 'Marmara', 'Bursa': 'Marmara', 'Eskisehir': 'Marmara',
+    'Ankara': 'Ic Anadolu', 'Konya': 'Ic Anadolu', 'Kayseri': 'Ic Anadolu',
+    'Izmir': 'Ege', 'Antalya': 'Akdeniz', 'Mersin': 'Akdeniz', 'Adana': 'Akdeniz',
+    'Samsun': 'Karadeniz', 'Trabzon': 'Karadeniz',
+    'Gaziantep': 'Guneydogu Anadolu', 'Diyarbakir': 'Guneydogu Anadolu',
+    'Diger': 'Diger',
+}
+
 MEMBER_STATUSES = ['aktif', 'gecikmeli', 'pasif', 'terk']
 
 FIXED_HOLIDAYS = [
@@ -74,6 +84,7 @@ def get_db_connection():
         db["dbname"] = db.pop("name")
     return psycopg2.connect(**db)
 
+
 # ==========================================
 # 1. MEMBERS
 # ==========================================
@@ -87,38 +98,38 @@ def generate_members(num_members):
             weights=list(CITIES.values()), k=1
         )[0]
         district   = fake.city()
-        birth_date = fake.date_of_birth(minimum_age=18, maximum_age=65)
-        birth_year = birth_date.year
-        phone = fake.phone_number()
-        email = fake.email()
+        birth_date = fake.date_of_birth(minimum_age=18, maximum_age=65)  # DATE tipinde
+        phone      = fake.phone_number()
+        email      = fake.email()
         income     = round(random.choices(
             population=[20000, 35000, 55000, 85000, 150000],
             weights=[15, 30, 25, 20, 10], k=1
         )[0] * random.uniform(0.8, 1.2), 2)
-        signup_date   = fake.date_between(start_date=date(2022,1,1), end_date=date(2026,4,1))
-        member_status = random.choices(
+        signup_date    = fake.date_between(start_date=date(2022, 1, 1), end_date=date(2026, 4, 1))
+        # Düzeltme: sütun adı "status" değil "member_status" — staging.members ile uyumlu
+        member_status  = random.choices(
             population=MEMBER_STATUSES,
             weights=[60, 20, 10, 10]
         )[0]
         full_name = fake.name()
 
         members.append({
-            'member_id':   f'M{i+1:05d}',
-            'full_name':   full_name,
-            'tc_hash':     tc_hash,
-            'city':        city,
-            'district':    district,
-            'birth_year':  birth_year,
-            'birth_date':  birth_date,    # ← ekle
-            'income':      income,
-            'signup_date': signup_date,
-            'status':      member_status,
-            'phone':       phone,          # ← ekle
-            'email':       email,          # ← ekle
+            'member_id':     f'M{i+1:05d}',
+            'full_name':     full_name,
+            'tc_hash':       tc_hash,
+            'city':          city,
+            'district':      district,
+            'birth_date':    birth_date,    # DATE — staging.members ile uyumlu
+            'income':        income,
+            'signup_date':   signup_date,
+            'member_status': member_status, # sütun adı standardize edildi
+            'phone':         phone,
+            'email':         email,
         })
 
     logger.info(f'{num_members} üye üretildi.')
     return members
+
 
 # ==========================================
 # 2. PLANS
@@ -138,16 +149,39 @@ def generate_plans():
     logger.info(f'{len(plans)} plan üretildi.')
     return plans
 
+
 # ==========================================
-# 3. PAYMENTS
+# 3. BRANCHES (Hafta 3-4 için eklendi)
+# ==========================================
+def generate_branches():
+    """
+    Her şehir için 1 şube üretir.
+    ddl.sql → dim_branch ve staging.branches ile uyumlu.
+    """
+    branches = []
+    for i, (city, _) in enumerate(CITIES.items(), start=1):
+        region = CITY_REGIONS.get(city, 'Diger')
+        open_date = fake.date_between(start_date=date(2010, 1, 1), end_date=date(2021, 12, 31))
+        branches.append({
+            'branch_id':   f'B{i:03d}',
+            'branch_name': f'{city} Subesi',
+            'city':        city,
+            'region':      region,
+            'open_date':   open_date,
+        })
+    logger.info(f'{len(branches)} şube üretildi.')
+    return branches
+
+
+# ==========================================
+# 4. PAYMENTS
 # ==========================================
 def generate_payments(members, plans):
     payments = []
     payment_counter = 1
-    plan_lookup = {p['plan_id']: p for p in plans}
     today = date.today()
 
-    for i, member in enumerate(members):
+    for member in members:
         income = member['income']
         if income >= 100_000:
             plan = random.choices(plans, weights=[10, 10, 40, 10, 30], k=1)[0]
@@ -160,7 +194,7 @@ def generate_payments(members, plans):
         amount_due = plan['monthly_installment']
         start_date = member['signup_date']
         duration   = plan['duration_months']
-        status     = member['status']
+        status     = member['member_status']   # düzeltildi: 'status' → 'member_status'
 
         active_months = random.randint(1, min(6, duration)) if status == 'terk' else duration
 
@@ -203,7 +237,6 @@ def generate_payments(members, plans):
                     amount_paid = amount_due
                     pay_status  = 'gecikmeli'
             else:
-                days_late    = None
                 payment_date = None
                 amount_paid  = 0
                 pay_status   = 'odenmedi'
@@ -224,15 +257,15 @@ def generate_payments(members, plans):
     logger.info(f'{len(payments)} ödeme kaydı üretildi.')
     return payments
 
+
 # ==========================================
-# 4. LOTTERY
+# 5. LOTTERY
 # ==========================================
 def generate_lottery(members, plans):
     lottery = []
     lottery_counter = 1
-    plan_lookup = {p['plan_id']: p for p in plans}
 
-    for i, member in enumerate(members):
+    for member in members:
         income = member['income']
         if income >= 100_000:
             plan = random.choices(plans, weights=[10, 10, 40, 10, 30], k=1)[0]
@@ -245,21 +278,21 @@ def generate_lottery(members, plans):
         kura_won   = random.random() < 0.20
 
         if kura_won:
-            kura_offset = random.randint(6, min(24, plan['duration_months']))
+            kura_offset  = random.randint(6, min(24, plan['duration_months']))
             lottery_date = start_date + relativedelta(months=kura_offset)
             lottery.append({
-                'lottery_id':   f'L{lottery_counter:06d}',
-                'member_id':    member['member_id'],
-                'plan_id':      plan['plan_id'],
-                'lottery_date': lottery_date,
+                'lottery_id':    f'L{lottery_counter:06d}',
+                'member_id':     member['member_id'],
+                'plan_id':       plan['plan_id'],
+                'lottery_date':  lottery_date,
                 'lottery_round': random.randint(1, 8),
-                'is_winner':    True,
+                'is_winner':     True,
             })
             lottery_counter += 1
         else:
             num_entries = random.randint(0, 2)
             for _ in range(num_entries):
-                offset = random.randint(3, min(18, plan['duration_months']))
+                offset       = random.randint(3, min(18, plan['duration_months']))
                 lottery_date = start_date + relativedelta(months=offset)
                 lottery.append({
                     'lottery_id':    f'L{lottery_counter:06d}',
@@ -274,8 +307,9 @@ def generate_lottery(members, plans):
     logger.info(f'{len(lottery)} kura kaydı üretildi.')
     return lottery
 
+
 # ==========================================
-# 5. KİRLİ VERİ ENJEKSİYONU
+# 6. KİRLİ VERİ ENJEKSİYONU
 # ==========================================
 def inject_dirty_data(members, payments):
     # %8 üyede tc_hash → None
@@ -290,36 +324,44 @@ def inject_dirty_data(members, payments):
     for p in random.sample(payments, int(len(payments) * 0.005)):
         p['paid_amount'] = round(random.uniform(-9999, -1), 2)
 
-    # %0.3 ödemede tutarsız tarih
+    # %0.3 ödemede tutarsız tarih (paid_date < due_date)
     for p in random.sample(payments, int(len(payments) * 0.003)):
         if p['paid_date'] is not None:
             p['paid_date'] = p['due_date'] - timedelta(days=random.randint(1, 10))
 
     return members, payments
 
+
 # ==========================================
-# 6. STAGING'E YAZ
+# 7. STAGING'E YAZ
 # ==========================================
-def save_to_staging(conn, members, plans, payments, lottery):
+def save_to_staging(conn, members, plans, payments, lottery, branches):
     cur = conn.cursor()
 
     logger.info('Staging tabloları temizleniyor...')
-    cur.execute("TRUNCATE staging.members, staging.plans, staging.payments, staging.lottery RESTART IDENTITY CASCADE")
+    cur.execute("""
+        TRUNCATE staging.members, staging.plans, staging.payments,
+                 staging.lottery, staging.branches
+        RESTART IDENTITY CASCADE
+    """)
     conn.commit()
 
+    # --- members ---
     logger.info('staging.members yazılıyor...')
     execute_values(cur,
         """INSERT INTO staging.members
-           (member_id, full_name, tc_hash, city, district, 
-            birth_year, birth_date, income, signup_date, status,
+           (member_id, full_name, tc_hash, city, district,
+            birth_date, income, signup_date, member_status,
             phone, email)
            VALUES %s""",
         [(m['member_id'], m['full_name'], m['tc_hash'], m['city'], m['district'],
-          m['birth_year'], m['birth_date'], m['income'], m['signup_date'], m['status'],
-          m['phone'], m['email']) for m in members]
+          m['birth_date'], m['income'], m['signup_date'], m['member_status'],
+          m['phone'], m['email'])
+         for m in members]
     )
     logger.info(f'  -> {len(members)} satır eklendi.')
 
+    # --- plans ---
     logger.info('staging.plans yazılıyor...')
     execute_values(cur,
         """INSERT INTO staging.plans
@@ -330,6 +372,7 @@ def save_to_staging(conn, members, plans, payments, lottery):
     )
     logger.info(f'  -> {len(plans)} satır eklendi.')
 
+    # --- payments ---
     logger.info('staging.payments yazılıyor...')
     execute_values(cur,
         """INSERT INTO staging.payments
@@ -338,10 +381,12 @@ def save_to_staging(conn, members, plans, payments, lottery):
            VALUES %s""",
         [(p['payment_id'], p['member_id'], p['plan_id'], p['installment_no'],
           p['due_date'], p['paid_date'], p['due_amount'], p['paid_amount'],
-          p['payment_status']) for p in payments]
+          p['payment_status'])
+         for p in payments]
     )
     logger.info(f'  -> {len(payments)} satır eklendi.')
 
+    # --- lottery ---
     logger.info('staging.lottery yazılıyor...')
     execute_values(cur,
         """INSERT INTO staging.lottery
@@ -351,6 +396,17 @@ def save_to_staging(conn, members, plans, payments, lottery):
           l['lottery_round'], l['is_winner']) for l in lottery]
     )
     logger.info(f'  -> {len(lottery)} satır eklendi.')
+
+    # --- branches ---
+    logger.info('staging.branches yazılıyor...')
+    execute_values(cur,
+        """INSERT INTO staging.branches
+           (branch_id, branch_name, city, region, open_date)
+           VALUES %s""",
+        [(b['branch_id'], b['branch_name'], b['city'], b['region'], b['open_date'])
+         for b in branches]
+    )
+    logger.info(f'  -> {len(branches)} satır eklendi.')
 
     conn.commit()
     cur.close()
@@ -367,6 +423,7 @@ if __name__ == '__main__':
 
     members  = generate_members(num_members)
     plans    = generate_plans()
+    branches = generate_branches()
     payments = generate_payments(members, plans)
     lottery  = generate_lottery(members, plans)
 
@@ -374,18 +431,9 @@ if __name__ == '__main__':
 
     conn = get_db_connection()
     try:
-        save_to_staging(conn, members, plans, payments, lottery)
+        save_to_staging(conn, members, plans, payments, lottery, branches)
     finally:
         conn.close()
         logger.info('Veritabanı bağlantısı kapatıldı.')
 
     logger.info('=== Veri Üretimi Tamamlandı ===')
- 
-
-
-
-
-
-
-
-
