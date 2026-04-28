@@ -1,0 +1,17 @@
+# ============================================================
+# config.yaml.example
+# Bu dosyayı kopyalayıp config.yaml olarak kaydet:
+# cp config.yaml.example config.yaml
+# Sonra config.yaml'daki boş alanları doldur.
+# config.yaml asla GitHub'a push'lanmaz (.gitignore'da).
+# ============================================================
+database:
+  host: localhost
+  port: 5432
+  name: tasarruf_finansman
+  user: postgres
+  password: ""  
+
+pipeline:
+  batch_size: 1000
+  log_level: INFO

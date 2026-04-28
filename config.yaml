@@ -3,7 +3,7 @@ database:
   port: 5432
   name: tasarruf_finansman
   user: postgres
-  password: "2491"
+  password: " "
 
 pipeline:
   batch_size: 1000
