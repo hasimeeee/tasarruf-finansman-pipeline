@@ -86,8 +86,7 @@ def load_dim_date(conn):
 
     # Güvenli fallback + biraz buffer (ayın başı/sonu için)
     start = (min_date_raw or date(2022, 1, 1)).replace(day=1)
-    end   = (max_date_raw or date.today()).replace(day=28) + timedelta(days=4)
-    end   = end.replace(day=1) - timedelta(days=1)  # ayın son günü
+    end   = (max_date_raw or date.today()) + timedelta(days=90)
 
     log.info(f"dim_date araligi: {start} → {end}")
 
