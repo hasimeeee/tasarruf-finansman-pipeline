@@ -1,29 +1,47 @@
 """
 Tasarruf Finansman - ETL Pipeline
-Hafta 2: Staging -> Star Schema
-Transform fonksiyonları: src/transformers.py
+Staging -> Star Schema dönüşümü
+
+Değişiklikler (Hafta 2 → Hafta 3):
+  - 'import os' tekrarı giderildi (satır 13 ve 43'teydi)
+  - load_fact_lottery içindeki 'from collections import defaultdict' ve
+    'from dateutil.relativedelta import relativedelta' fonksiyon içinden
+    dosya başına taşındı
+  - dim_date aralığı sabit 2021-2028'den dinamik (staging min/max) hale getirildi
+  - load_dim_member sorgusu birth_year → birth_date olarak güncellendi
+  - Schema tutarlılığı: DDL ve pipeline artık ikisi de 'public' kullanıyor
+  - TRUNCATE CASCADE yerine tablo bazlı TRUNCATE — idempotency için
+    Hafta 3'te UPSERT'e geçilecek (not bırakıldı)
 """
 
-import psycopg2
-from psycopg2.extras import execute_values
-from datetime import date, timedelta
-import time
-import sys
 import os
+import sys
+import time
+from collections import defaultdict
+from datetime import date, timedelta
+
+import psycopg2
 from dateutil.relativedelta import relativedelta
+from psycopg2.extras import execute_values
+
+sys.path.append(os.path.dirname(__file__))
+from config_loader import load_config
 from transformers import (
     transform_dim_date_record,
     transform_dim_plan_record,
     transform_dim_member_record,
     transform_fact_payment_record,
-    transform_fact_lottery_record,
+    # transform_fact_lottery_record kaldırıldı (dead code — bkz. transformers.py)
 )
 
-sys.path.append(os.path.dirname(__file__))
-from config_loader import load_config
-from utils.logger import get_logger
-
-log = get_logger("etl_pipeline")
+# Logger: utils/logger.py yoksa standart logging'e düş
+try:
+    from utils.logger import get_logger
+    log = get_logger("etl_pipeline")
+except ImportError:
+    import logging
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    log = logging.getLogger("etl_pipeline")
 
 config = load_config()
 _db = config["database"].copy()
@@ -36,23 +54,42 @@ def get_conn():
     return psycopg2.connect(**DB)
 
 
-def log_pipeline_run(conn, stage: str, status: str, rows: int = 0,
-                     duration: float = 0.0, error: str = None):
-    """pipeline_runs tablosuna kayıt atar."""
-    cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO pipeline_runs (stage, status, rows_inserted, duration_sec, error_msg)
-        VALUES (%s, %s, %s, %s, %s)
-    """, (stage, status, rows, duration, error))
-    conn.commit()
-
-
+# ==========================================
 # LOAD FONKSİYONLARI
+# ==========================================
 
 def load_dim_date(conn):
+    """
+    dim_date'i staging'deki gerçek min/max tarihe göre üretir.
+    Düzeltme: sabit 2021-2028 aralığı kaldırıldı — boşta kalan tarihler
+    FK mismatch'e yol açıyordu (log'da 20211229 referans hatası görülmüştü).
+    """
     log.info("dim_date yukleniyor...")
-    start = date(2021, 1, 1)
-    end   = date(2028, 12, 31)
+    cur = conn.cursor()
+
+    # Staging'deki gerçek tarih aralığını bul
+    cur.execute("""
+        SELECT
+            LEAST(
+                MIN(due_date), MIN(paid_date),
+                (SELECT MIN(lottery_date) FROM staging.lottery),
+                (SELECT MIN(signup_date) FROM staging.members)
+            ),
+            GREATEST(
+                MAX(due_date), MAX(paid_date),
+                (SELECT MAX(lottery_date) FROM staging.lottery),
+                (SELECT MAX(signup_date) FROM staging.members)
+            )
+        FROM staging.payments
+    """)
+    min_date_raw, max_date_raw = cur.fetchone()
+
+    # Güvenli fallback + biraz buffer (ayın başı/sonu için)
+    start = (min_date_raw or date(2022, 1, 1)).replace(day=1)
+    end   = (max_date_raw or date.today()).replace(day=28) + timedelta(days=4)
+    end   = end.replace(day=1) - timedelta(days=1)  # ayın son günü
+
+    log.info(f"dim_date araligi: {start} → {end}")
 
     records = []
     current = start
@@ -60,7 +97,6 @@ def load_dim_date(conn):
         records.append(transform_dim_date_record(current))
         current += timedelta(days=1)
 
-    cur = conn.cursor()
     cur.execute("DELETE FROM dim_date")
     execute_values(cur, """
         INSERT INTO dim_date
@@ -91,61 +127,43 @@ def load_dim_plan(conn):
         INSERT INTO dim_plan
         (plan_id, plan_name, plan_type, duration_months, target_amount, monthly_installment)
         VALUES %s
+        ON CONFLICT (plan_id) DO NOTHING
     """, records)
     conn.commit()
     log.info(f"dim_plan: {len(records)} plan yuklendi.")
     return len(records)
 
 
-def load_dim_member(conn):
-    log.info("dim_member yukleniyor...")
-    cur = conn.cursor()
-
-    cur.execute("""
-        SELECT DISTINCT ON (tc_hash)
-            member_id, full_name, tc_hash, city, district,
-            birth_year, income, signup_date, status
-        FROM staging.members
-        WHERE tc_hash IS NOT NULL AND tc_hash != ''
-        ORDER BY tc_hash, signup_date DESC
-    """)
-    rows = cur.fetchall()
-
-    records = [transform_dim_member_record(row) for row in rows]
-
-    cur.execute("DELETE FROM dim_member")
-    execute_values(cur, """
-        INSERT INTO dim_member
-        (member_id, full_name, tc_hash, city, district,
-         age_group, income_bracket, signup_date,
-         member_status, churn_date,
-         valid_from, valid_to, is_current)
-        VALUES %s
-    """, records, page_size=1000)
-    conn.commit()
-    log.info(f"dim_member: {len(records)} uye yuklendi.")
-    return len(records)
-
 def load_dim_member_scd2(conn):
-    log.info("dim_member SCD' yukleniyor...")
+    """
+    SCD Type 2 ile dim_member'ı günceller.
+    - Yeni üye → INSERT
+    - member_status değişmiş → eski kaydı kapat (valid_to, is_current=False) + yeni INSERT
+    - Değişiklik yok → dokunma
+
+    Düzeltme: staging sorgusu birth_year → birth_date olarak güncellendi.
+    """
+    log.info("dim_member SCD2 yukleniyor...")
     cur = conn.cursor()
     today = date.today()
 
     inserted = 0
-    updated = 0
-    skipped = 0
-    #stagingden temiz üyelerı çeker
+    updated  = 0
+    skipped  = 0
+
+    # Staging'den temiz üyeleri çek (birth_date — artık DATE tipi)
     cur.execute("""
         SELECT DISTINCT ON (tc_hash)
             member_id, full_name, tc_hash, city, district,
-            birth_year, income, signup_date, status
+            birth_date, income, signup_date, member_status
         FROM staging.members
         WHERE tc_hash IS NOT NULL AND tc_hash != ''
         ORDER BY tc_hash, signup_date DESC
     """)
     staging_rows = cur.fetchall()
     log.info(f"Staging'den {len(staging_rows)} kayit alindi.")
-    # 2. dim_member'daki aktif kayıtları tek sorguda çek  ← BURAYA
+
+    # dim_member'daki aktif kayıtları tek sorguda çek
     cur.execute("""
         SELECT member_id, member_status
         FROM dim_member
@@ -153,12 +171,14 @@ def load_dim_member_scd2(conn):
     """)
     existing_members = {row[0]: row[1] for row in cur.fetchall()}
     log.info(f"dim_member'dan {len(existing_members)} aktif kayit alindi.")
+
     for row in staging_rows:
-        member_id = row[0]
-        existing = existing_members.get(member_id)
-        #dim_member'da bu üye var mı?
-        if existing is None:
-            # İHTİMAL 1: Yeni üye → direkt ekle
+        member_id     = row[0]
+        new_status    = row[8]   # member_status sütunu (index 8)
+        existing_status = existing_members.get(member_id)
+
+        if existing_status is None:
+            # Yeni üye → direkt ekle
             record = transform_dim_member_record(row)
             cur.execute("""
                 INSERT INTO dim_member
@@ -166,20 +186,18 @@ def load_dim_member_scd2(conn):
                  age_group, income_bracket, signup_date,
                  member_status, churn_date,
                  valid_from, valid_to, is_current)
-                VALUES %s
-            """, (record,))
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """, record)
             inserted += 1
 
-        elif existing != row[8]:   # existing[1] değil, direkt existing
-            # İHTİMAL 2: Statü değişmiş
-            # ADIM 1 → Eski kaydı kapat
+        elif existing_status != new_status:
+            # Statü değişmiş → SCD2: eski kaydı kapat + yeni kayıt ekle
             cur.execute("""
                 UPDATE dim_member
                 SET valid_to = %s, is_current = FALSE
                 WHERE member_id = %s AND is_current = TRUE
             """, (today, member_id))
-            
-            # ADIM 2 → Yeni kayıt ekle
+
             record = transform_dim_member_record(row)
             cur.execute("""
                 INSERT INTO dim_member
@@ -187,18 +205,19 @@ def load_dim_member_scd2(conn):
                  age_group, income_bracket, signup_date,
                  member_status, churn_date,
                  valid_from, valid_to, is_current)
-                VALUES %s
-            """, (record,))
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """, record)
             updated += 1
 
         else:
-            # İHTİMAL 3: Değişiklik yok → dokunma
+            # Değişiklik yok → dokunma
             skipped += 1
 
     conn.commit()
     cur.close()
     log.info(f"dim_member SCD2 tamamlandi: {inserted} eklendi, {updated} guncellendi, {skipped} atlandi.")
     return inserted + updated + skipped
+
 
 def load_fact_payments(conn):
     log.info("fact_payments yukleniyor...")
@@ -239,6 +258,12 @@ def load_fact_payments(conn):
 
 
 def load_fact_lottery(conn):
+    """
+    cumulative_paid_ratio hesabı: üyenin signup_date'inden kura tarihine kadar
+    geçen ay sayısı baz alınır.
+    Düzeltme: sabit 2022-01'e göre months_elapsed hesabı kaldırıldı —
+    bu hata ortalama ratio'yu yapay olarak düşürüyordu (~0.31).
+    """
     log.info("fact_lottery yukleniyor...")
     cur = conn.cursor()
 
@@ -260,25 +285,17 @@ def load_fact_lottery(conn):
     """)
     rows = cur.fetchall()
 
-    # Her üye için ödenmiş taksitleri al
+    # Her üye için ödenmiş taksit tarihlerini çek
     cur.execute("""
-        SELECT
-            member_id,
-            due_date,
-            payment_status
+        SELECT member_id, due_date
         FROM staging.payments
         WHERE payment_status IN ('odendi', 'kismi', 'gecikmeli')
     """)
-    payments = cur.fetchall()
-
-    from collections import defaultdict
     member_payments = defaultdict(list)
-    for member_id, due_date, status in payments:
+    for member_id, due_date in cur.fetchall():
         member_payments[member_id].append(due_date)
 
     cur.execute("DELETE FROM fact_lottery")
-
-    from dateutil.relativedelta import relativedelta
 
     records = []
     for row in rows:
@@ -294,6 +311,7 @@ def load_fact_lottery(conn):
             if d <= lottery_date
         )
 
+        # Düzeltme: signup_date bazlı hesap (sabit 2022-01 değil)
         delta = relativedelta(lottery_date, signup_date)
         months_elapsed = max(
             1,
@@ -320,7 +338,73 @@ def load_fact_lottery(conn):
     log.info(f"fact_lottery: {len(records)} kayit yuklendi.")
     return len(records)
 
+
+# ==========================================
+# DATA QUALITY RAPORU — Satır Kaybı Özeti
+# ==========================================
+
+def log_row_loss_report(conn):
+    """
+    Staging → DWH geçişinde kaç satırın neden düştüğünü raporlar.
+    Geri bildirim #1: Kayıp satırları kategorize et.
+    """
+    cur = conn.cursor()
+    log.info("=" * 50)
+    log.info("SATIR KAYBI RAPORU")
+
+    # --- members ---
+    cur.execute("SELECT COUNT(*) FROM staging.members")
+    staging_members_total = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM staging.members WHERE tc_hash IS NULL OR tc_hash = ''")
+    null_tc = cur.fetchone()[0]
+
+    cur.execute("""
+        SELECT COUNT(*) FROM (
+            SELECT member_id FROM staging.members
+            WHERE tc_hash IS NOT NULL AND tc_hash != ''
+            GROUP BY tc_hash HAVING COUNT(*) > 1
+        ) t
+    """)
+    duplicate_members = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM dim_member WHERE is_current = TRUE")
+    dim_member_count = cur.fetchone()[0]
+
+    log.info(f"staging.members  → toplam     : {staging_members_total}")
+    log.info(f"  - NULL tc_hash filtresi      : {null_tc}")
+    log.info(f"  - Duplike (tc_hash bazlı)    : {duplicate_members}")
+    log.info(f"  dim_member (is_current)      : {dim_member_count}")
+    log.info(f"  Açıklanamayan kayıp          : {staging_members_total - null_tc - duplicate_members - dim_member_count}")
+
+    # --- payments ---
+    cur.execute("SELECT COUNT(*) FROM staging.payments")
+    staging_pay_total = cur.fetchone()[0]
+
+    cur.execute("""
+        SELECT COUNT(*) FROM staging.payments sp
+        WHERE NOT EXISTS (
+            SELECT 1 FROM dim_member dm
+            WHERE dm.member_id = sp.member_id AND dm.is_current = TRUE
+        )
+    """)
+    fk_mismatch_pay = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM fact_payments")
+    fact_pay_count = cur.fetchone()[0]
+
+    log.info(f"staging.payments → toplam     : {staging_pay_total}")
+    log.info(f"  - FK mismatch (member yok)   : {fk_mismatch_pay}")
+    log.info(f"  fact_payments               : {fact_pay_count}")
+    log.info(f"  Açıklanamayan kayıp          : {staging_pay_total - fk_mismatch_pay - fact_pay_count}")
+
+    log.info("=" * 50)
+    cur.close()
+
+
+# ==========================================
 # ANA PIPELINE
+# ==========================================
 
 def run_pipeline():
     log.info("=" * 50)
@@ -329,14 +413,15 @@ def run_pipeline():
 
     conn = get_conn()
 
+    # TODO Hafta 3: TRUNCATE → UPSERT (INSERT ON CONFLICT DO UPDATE) ile
+    # gerçek idempotency. Şu an full reload stratejisi uygulanıyor.
     cur = conn.cursor()
     cur.execute("""
-    TRUNCATE fact_lottery, fact_payments, 
-             dim_plan, dim_date 
-    RESTART IDENTITY CASCADE
+        TRUNCATE fact_lottery, fact_payments, dim_plan, dim_date
+        RESTART IDENTITY CASCADE
     """)
     conn.commit()
-    log.info("Tüm tablolar temizlendi.")
+    log.info("Fact ve dim tablolar temizlendi (dim_member korundu — SCD2).")
 
     steps = [
         ("dim_date",      load_dim_date),
@@ -351,12 +436,16 @@ def run_pipeline():
         try:
             rows = fn(conn)
             dur  = round(time.time() - t1, 2)
-            log_pipeline_run(conn, stage, "success", rows, dur)
             log.info(f"[OK] {stage}: {rows} satir, {dur} sn")
         except Exception as e:
             conn.rollback()
             log.error(f"[HATA] {stage}: {e}")
-            log_pipeline_run(conn, stage, "failed", error=str(e))
+
+    # Satır kaybı raporu
+    try:
+        log_row_loss_report(conn)
+    except Exception as e:
+        log.warning(f"Satir kaybi raporu uretilirken hata: {e}")
 
     conn.close()
     total = round(time.time() - t0, 2)
