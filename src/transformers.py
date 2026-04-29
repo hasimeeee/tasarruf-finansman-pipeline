@@ -1,6 +1,3 @@
-
-Copy
-
 """
 Tasarruf Finansman - Transform Fonksiyonları
 Staging verisini star schema için hazırlar.
