@@ -12,3 +12,5 @@ xgboost==2.0.3
 lightgbm==4.3.0
 apscheduler==3.10.4
 great-expectations==0.18.15
+pytest==8.3.5
+python-dateutil==2.9.0
