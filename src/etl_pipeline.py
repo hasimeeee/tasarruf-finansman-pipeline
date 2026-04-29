@@ -107,13 +107,14 @@ def load_dim_date(conn):
         records.append(transform_dim_date_record(current))
         current += timedelta(days=1)
 
-    cur.execute("DELETE FROM dim_date")
     execute_values(cur, """
         INSERT INTO dim_date
         (date_key, full_date, day, month, quarter, year,
          day_of_week, day_name, month_name, is_weekend, is_holiday, is_ramadan)
         VALUES %s
-        ON CONFLICT (date_key) DO NOTHING
+        ON CONFLICT (date_key) DO UPDATE SET
+            is_holiday = EXCLUDED.is_holiday,
+            is_ramadan = EXCLUDED.is_ramadan
     """, records, page_size=1000)
     conn.commit()
     log.info(f"dim_date: {len(records)} gun yuklendi.")
@@ -132,12 +133,16 @@ def load_dim_plan(conn):
 
     records = [transform_dim_plan_record(row) for row in rows]
 
-    cur.execute("DELETE FROM dim_plan")
     execute_values(cur, """
         INSERT INTO dim_plan
         (plan_id, plan_name, plan_type, duration_months, target_amount, monthly_installment)
         VALUES %s
-        ON CONFLICT (plan_id) DO NOTHING
+        ON CONFLICT (plan_id) DO UPDATE SET
+            plan_name           = EXCLUDED.plan_name,
+            plan_type           = EXCLUDED.plan_type,
+            duration_months     = EXCLUDED.duration_months,
+            target_amount       = EXCLUDED.target_amount,
+            monthly_installment = EXCLUDED.monthly_installment
     """, records)
     conn.commit()
     log.info(f"dim_plan: {len(records)} plan yuklendi.")
@@ -253,14 +258,17 @@ def load_fact_payments(conn):
 
     records = [transform_fact_payment_record(row) for row in rows]
 
-    cur.execute("DELETE FROM fact_payments")
     execute_values(cur, """
         INSERT INTO fact_payments
         (payment_id, member_key, plan_key, date_key,
          installment_no, due_amount, paid_amount,
          days_late, payment_status)
         VALUES %s
-        ON CONFLICT (payment_id) DO NOTHING
+        ON CONFLICT (payment_id) DO UPDATE SET
+            due_amount     = EXCLUDED.due_amount,
+            paid_amount    = EXCLUDED.paid_amount,
+            days_late      = EXCLUDED.days_late,
+            payment_status = EXCLUDED.payment_status
     """, records, page_size=1000)
     conn.commit()
     log.info(f"fact_payments: {len(records)} kayit yuklendi.")
@@ -341,7 +349,8 @@ def load_fact_lottery(conn):
         (lottery_id, member_key, plan_key, date_key,
          lottery_round, is_winner, cumulative_paid_ratio)
         VALUES %s
-        ON CONFLICT (lottery_id) DO NOTHING
+        ON CONFLICT (lottery_id) DO UPDATE SET
+            cumulative_paid_ratio = EXCLUDED.cumulative_paid_ratio
     """, records, page_size=1000)
 
     conn.commit()
@@ -423,16 +432,9 @@ def run_pipeline():
 
     conn = get_conn()
 
-    # TODO Hafta 3: TRUNCATE → UPSERT (INSERT ON CONFLICT DO UPDATE) ile
-    # gerçek idempotency. Şu an full reload stratejisi uygulanıyor.
-    cur = conn.cursor()
-    cur.execute("""
-        TRUNCATE fact_lottery, fact_payments, dim_plan, dim_date
-        RESTART IDENTITY CASCADE
-    """)
-    conn.commit()
-    log.info("Fact ve dim tablolar temizlendi (dim_member korundu — SCD2).")
-
+    # UPSERT stratejisi: DELETE/TRUNCATE yok.
+    # Her tablo INSERT ON CONFLICT DO UPDATE ile güncelleniyor.
+    # Aynı pipeline kaç kez çalışsa sonuç aynı — gerçek idempotency.
     steps = [
         ("dim_date",      load_dim_date),
         ("dim_plan",      load_dim_plan),
