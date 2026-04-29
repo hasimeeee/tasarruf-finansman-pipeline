@@ -361,7 +361,7 @@ def log_row_loss_report(conn):
 
     cur.execute("""
         SELECT COUNT(*) FROM (
-            SELECT member_id FROM staging.members
+            SELECT tc_hash FROM staging.members
             WHERE tc_hash IS NOT NULL AND tc_hash != ''
             GROUP BY tc_hash HAVING COUNT(*) > 1
         ) t
