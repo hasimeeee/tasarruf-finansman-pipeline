@@ -29,7 +29,6 @@ services:
       DB_NAME: tasarruf_finansman
       DB_USER: postgres
       DB_PASSWORD: 2491
-    command: python src/data_generator.py
-
+    command: python src/scheduler.py
 volumes:
   postgres_data:

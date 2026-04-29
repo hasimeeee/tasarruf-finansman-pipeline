@@ -1,0 +1,53 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: tasarruf_finansman
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test1234
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Create .env file
+        run: |
+          echo "DB_HOST=localhost" >> .env
+          echo "DB_PORT=5432" >> .env
+          echo "DB_NAME=tasarruf_finansman" >> .env
+          echo "DB_USER=postgres" >> .env
+          echo "DB_PASSWORD=test1234" >> .env
+
+      - name: Run SQL schemas
+        run: |
+          PGPASSWORD=test1234 psql -h localhost -U postgres -d tasarruf_finansman -f sql/staging.sql
+          PGPASSWORD=test1234 psql -h localhost -U postgres -d tasarruf_finansman -f sql/ddl.sql
+
+      - name: Run tests
+        run: python -m pytest tests/test_scd2.py -v

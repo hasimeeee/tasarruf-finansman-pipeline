@@ -511,3 +511,320 @@ LINE 3:             SELECT member_id FROM staging.members
 2026-04-28 14:10:57,044 [INFO] ==================================================
 2026-04-28 14:10:57,044 [INFO] Pipeline tamamlandi. Toplam sure: 39.29 sn
 2026-04-28 14:10:57,045 [INFO] ==================================================
+2026-04-29 09:40:21,819 [INFO] Scheduler basladi. Her gun 02:00 (Europe/Istanbul) calisacak.
+2026-04-29 10:06:06,647 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 10:06:06,798 [INFO] Staging'den 13801 kayit alindi.
+2026-04-29 10:06:06,832 [INFO] dim_member'dan 14997 aktif kayit alindi.
+2026-04-29 10:06:06,844 [INFO] dim_member SCD2 tamamlandi: 1 eklendi, 0 guncellendi, 13800 atlandi.
+2026-04-29 11:12:10,571 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 11:12:11,586 [INFO] Staging'den 13802 kayit alindi.
+2026-04-29 11:12:11,746 [INFO] dim_member'dan 14998 aktif kayit alindi.
+2026-04-29 11:12:11,778 [INFO] dim_member SCD2 tamamlandi: 1 eklendi, 0 guncellendi, 13801 atlandi.
+2026-04-29 11:12:11,804 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 11:12:12,227 [INFO] Staging'den 13802 kayit alindi.
+2026-04-29 11:12:12,285 [INFO] dim_member'dan 14999 aktif kayit alindi.
+2026-04-29 11:12:12,317 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 1 guncellendi, 13801 atlandi.
+2026-04-29 11:13:36,048 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 11:13:36,236 [INFO] Staging'den 13802 kayit alindi.
+2026-04-29 11:13:36,274 [INFO] dim_member'dan 14999 aktif kayit alindi.
+2026-04-29 11:13:36,282 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13802 atlandi.
+2026-04-29 11:13:36,307 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 11:13:36,496 [INFO] Staging'den 13802 kayit alindi.
+2026-04-29 11:13:36,525 [INFO] dim_member'dan 14999 aktif kayit alindi.
+2026-04-29 11:13:36,535 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13802 atlandi.
+2026-04-29 11:29:35,632 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 11:29:36,189 [INFO] Staging'den 13803 kayit alindi.
+2026-04-29 11:29:36,255 [INFO] dim_member'dan 14999 aktif kayit alindi.
+2026-04-29 11:29:36,275 [INFO] dim_member SCD2 tamamlandi: 1 eklendi, 0 guncellendi, 13802 atlandi.
+2026-04-29 11:29:36,301 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 11:29:36,802 [INFO] Staging'den 13803 kayit alindi.
+2026-04-29 11:29:36,882 [INFO] dim_member'dan 15000 aktif kayit alindi.
+2026-04-29 11:29:36,927 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 1 guncellendi, 13802 atlandi.
+2026-04-29 11:37:26,266 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 11:37:26,439 [INFO] Staging'den 13803 kayit alindi.
+2026-04-29 11:37:26,475 [INFO] dim_member'dan 15000 aktif kayit alindi.
+2026-04-29 11:37:26,486 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13803 atlandi.
+2026-04-29 11:37:26,498 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 11:37:26,694 [INFO] Staging'den 13803 kayit alindi.
+2026-04-29 11:37:26,727 [INFO] dim_member'dan 15000 aktif kayit alindi.
+2026-04-29 11:37:26,735 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13803 atlandi.
+2026-04-29 11:39:14,344 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 11:39:14,808 [INFO] Staging'den 13803 kayit alindi.
+2026-04-29 11:39:15,028 [INFO] dim_member'dan 15000 aktif kayit alindi.
+2026-04-29 11:39:15,072 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13803 atlandi.
+2026-04-29 11:39:15,140 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 11:39:15,630 [INFO] Staging'den 13803 kayit alindi.
+2026-04-29 11:39:15,697 [INFO] dim_member'dan 15000 aktif kayit alindi.
+2026-04-29 11:39:15,714 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13803 atlandi.
+2026-04-29 11:41:59,284 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 11:41:59,392 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 11:41:59,416 [INFO] dim_member'dan 15000 aktif kayit alindi.
+2026-04-29 11:41:59,428 [INFO] dim_member SCD2 tamamlandi: 1 eklendi, 0 guncellendi, 13803 atlandi.
+2026-04-29 11:41:59,437 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 11:41:59,538 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 11:41:59,552 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 11:41:59,558 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:03:41,843 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:03:42,197 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:03:42,265 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:03:42,280 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:03:42,409 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:03:43,012 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:03:43,223 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:03:43,259 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:03:43,370 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:03:44,199 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:03:44,285 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:03:44,317 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:03:44,510 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:03:44,864 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:03:44,909 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:03:44,919 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:03:44,941 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:03:45,161 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:03:45,199 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:03:45,210 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:03:45,290 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:03:45,642 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:03:45,708 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:03:45,729 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:03:45,746 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:03:46,028 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:03:46,075 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:03:46,090 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:04:08,938 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:04:09,183 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:04:09,229 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:04:09,238 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:04:09,320 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:04:09,572 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:04:09,613 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:04:09,623 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:04:09,640 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:04:09,869 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:04:09,910 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:04:09,920 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:04:10,002 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:04:10,229 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:04:10,263 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:04:10,271 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:04:10,287 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:04:10,478 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:04:10,530 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:04:10,542 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:04:10,629 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:04:11,015 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:04:11,069 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:04:11,081 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:04:11,096 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:04:11,379 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:04:11,435 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:04:11,449 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:04:11,558 [INFO] ==================================================
+2026-04-29 12:04:11,559 [INFO] ETL Pipeline basliyor...
+2026-04-29 12:04:11,674 [INFO] Fact ve dim tablolar temizlendi (dim_member korundu — SCD2).
+2026-04-29 12:04:11,674 [INFO] dim_date yukleniyor...
+2026-04-29 12:04:12,058 [INFO] dim_date araligi: 2021-12-01 → 2028-06-21
+2026-04-29 12:04:12,393 [INFO] dim_date: 2395 gun yuklendi.
+2026-04-29 12:04:12,394 [INFO] [OK] dim_date: 2395 satir, 0.72 sn
+2026-04-29 12:04:12,394 [INFO] dim_plan yukleniyor...
+2026-04-29 12:04:12,421 [INFO] dim_plan: 5 plan yuklendi.
+2026-04-29 12:04:12,422 [INFO] [OK] dim_plan: 5 satir, 0.03 sn
+2026-04-29 12:04:12,423 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:04:13,560 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:04:13,690 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:04:13,723 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:04:13,737 [INFO] [OK] dim_member: 13804 satir, 1.31 sn
+2026-04-29 12:04:13,738 [INFO] fact_payments yukleniyor...
+2026-04-29 12:05:08,278 [INFO] fact_payments: 368229 kayit yuklendi.
+2026-04-29 12:05:08,444 [INFO] [OK] fact_payments: 368229 satir, 54.71 sn
+2026-04-29 12:05:08,445 [INFO] fact_lottery yukleniyor...
+2026-04-29 12:05:11,643 [INFO] fact_lottery: 14973 kayit yuklendi.
+2026-04-29 12:05:11,671 [INFO] [OK] fact_lottery: 14973 satir, 3.23 sn
+2026-04-29 12:05:11,671 [INFO] ==================================================
+2026-04-29 12:05:11,672 [INFO] SATIR KAYBI RAPORU
+2026-04-29 12:05:11,891 [INFO] staging.members  → toplam     : 15004
+2026-04-29 12:05:11,892 [INFO]   - NULL tc_hash filtresi      : 1200
+2026-04-29 12:05:11,892 [INFO]   - Duplike (tc_hash bazlı)    : 0
+2026-04-29 12:05:11,892 [INFO]   = Beklenen dim_member        : 13804
+2026-04-29 12:05:11,893 [INFO]   dim_member (is_current)      : 15001
+2026-04-29 12:05:11,893 [INFO]   Fark (SCD2 birikimi dahil)   : 1197
+2026-04-29 12:05:12,294 [INFO] staging.payments → toplam     : 368297
+2026-04-29 12:05:12,294 [INFO]   - FK mismatch (member yok)   : 68
+2026-04-29 12:05:12,295 [INFO]   fact_payments               : 368229
+2026-04-29 12:05:12,295 [INFO]   Açıklanamayan kayıp          : 0
+2026-04-29 12:05:12,295 [INFO] ==================================================
+2026-04-29 12:05:12,297 [INFO] Pipeline tamamlandi. Toplam sure: 60.74 sn
+2026-04-29 12:05:12,297 [INFO] ==================================================
+2026-04-29 12:07:30,620 [INFO] ==================================================
+2026-04-29 12:07:30,622 [INFO] ETL Pipeline basliyor...
+2026-04-29 12:07:30,727 [INFO] Fact ve dim tablolar temizlendi (dim_member korundu — SCD2).
+2026-04-29 12:07:30,728 [INFO] dim_date yukleniyor...
+2026-04-29 12:07:30,849 [INFO] dim_date araligi: 2021-12-01 → 2028-06-21
+2026-04-29 12:07:31,170 [INFO] dim_date: 2395 gun yuklendi.
+2026-04-29 12:07:31,172 [INFO] [OK] dim_date: 2395 satir, 0.44 sn
+2026-04-29 12:07:31,172 [INFO] dim_plan yukleniyor...
+2026-04-29 12:07:31,206 [INFO] dim_plan: 5 plan yuklendi.
+2026-04-29 12:07:31,206 [INFO] [OK] dim_plan: 5 satir, 0.03 sn
+2026-04-29 12:07:31,208 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:07:31,607 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:07:31,702 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:07:31,721 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:07:31,737 [INFO] [OK] dim_member: 13804 satir, 0.53 sn
+2026-04-29 12:07:31,738 [INFO] fact_payments yukleniyor...
+2026-04-29 12:08:13,655 [INFO] fact_payments: 368229 kayit yuklendi.
+2026-04-29 12:08:13,886 [INFO] [OK] fact_payments: 368229 satir, 42.15 sn
+2026-04-29 12:08:13,886 [INFO] fact_lottery yukleniyor...
+2026-04-29 12:08:16,465 [INFO] fact_lottery: 14973 kayit yuklendi.
+2026-04-29 12:08:16,482 [INFO] [OK] fact_lottery: 14973 satir, 2.6 sn
+2026-04-29 12:08:16,482 [INFO] ==================================================
+2026-04-29 12:08:16,482 [INFO] SATIR KAYBI RAPORU
+2026-04-29 12:08:16,567 [INFO] staging.members  → toplam     : 15004
+2026-04-29 12:08:16,567 [INFO]   - NULL tc_hash filtresi      : 1200
+2026-04-29 12:08:16,567 [INFO]   - Duplike (tc_hash bazlı)    : 0
+2026-04-29 12:08:16,567 [INFO]   = Beklenen dim_member        : 13804
+2026-04-29 12:08:16,567 [INFO]   dim_member (is_current)      : 15001
+2026-04-29 12:08:16,567 [INFO]   Fark (SCD2 birikimi dahil)   : 1197
+2026-04-29 12:08:16,679 [INFO] staging.payments → toplam     : 368297
+2026-04-29 12:08:16,679 [INFO]   - FK mismatch (member yok)   : 68
+2026-04-29 12:08:16,680 [INFO]   fact_payments               : 368229
+2026-04-29 12:08:16,680 [INFO]   Açıklanamayan kayıp          : 0
+2026-04-29 12:08:16,680 [INFO] ==================================================
+2026-04-29 12:08:16,680 [INFO] Pipeline tamamlandi. Toplam sure: 46.06 sn
+2026-04-29 12:08:16,681 [INFO] ==================================================
+2026-04-29 12:11:26,424 [INFO] ==================================================
+2026-04-29 12:11:26,425 [INFO] ETL Pipeline basliyor...
+2026-04-29 12:11:26,461 [INFO] Fact ve dim tablolar temizlendi (dim_member korundu — SCD2).
+2026-04-29 12:11:26,461 [INFO] dim_date yukleniyor...
+2026-04-29 12:11:26,501 [INFO] dim_date araligi: 2021-12-01 → 2028-06-21
+2026-04-29 12:11:26,588 [INFO] dim_date: 2395 gun yuklendi.
+2026-04-29 12:11:26,588 [INFO] [OK] dim_date: 2395 satir, 0.13 sn
+2026-04-29 12:11:26,588 [INFO] dim_plan yukleniyor...
+2026-04-29 12:11:26,595 [INFO] dim_plan: 5 plan yuklendi.
+2026-04-29 12:11:26,596 [INFO] [OK] dim_plan: 5 satir, 0.01 sn
+2026-04-29 12:11:26,596 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:11:26,697 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:11:26,717 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:11:26,722 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:11:26,726 [INFO] [OK] dim_member: 13804 satir, 0.13 sn
+2026-04-29 12:11:26,726 [INFO] fact_payments yukleniyor...
+2026-04-29 12:12:02,637 [INFO] fact_payments: 368229 kayit yuklendi.
+2026-04-29 12:12:02,801 [INFO] [OK] fact_payments: 368229 satir, 36.08 sn
+2026-04-29 12:12:02,802 [INFO] fact_lottery yukleniyor...
+2026-04-29 12:12:05,840 [INFO] fact_lottery: 14973 kayit yuklendi.
+2026-04-29 12:12:05,861 [INFO] [OK] fact_lottery: 14973 satir, 3.06 sn
+2026-04-29 12:12:05,862 [INFO] ==================================================
+2026-04-29 12:12:05,862 [INFO] SATIR KAYBI RAPORU
+2026-04-29 12:12:05,980 [INFO] staging.members  → toplam     : 15004
+2026-04-29 12:12:05,980 [INFO]   - NULL tc_hash filtresi      : 1200
+2026-04-29 12:12:05,980 [INFO]   - Duplike (tc_hash bazlı)    : 0
+2026-04-29 12:12:05,980 [INFO]   = Beklenen dim_member        : 13804
+2026-04-29 12:12:05,981 [INFO]   dim_member (is_current)      : 15001
+2026-04-29 12:12:05,981 [INFO]   Fark (SCD2 birikimi dahil)   : 1197
+2026-04-29 12:12:06,133 [INFO] staging.payments → toplam     : 368297
+2026-04-29 12:12:06,133 [INFO]   - FK mismatch (member yok)   : 68
+2026-04-29 12:12:06,133 [INFO]   fact_payments               : 368229
+2026-04-29 12:12:06,134 [INFO]   Açıklanamayan kayıp          : 0
+2026-04-29 12:12:06,134 [INFO] ==================================================
+2026-04-29 12:12:06,134 [INFO] Pipeline tamamlandi. Toplam sure: 39.71 sn
+2026-04-29 12:12:06,135 [INFO] ==================================================
+2026-04-29 12:18:45,235 [INFO] ==================================================
+2026-04-29 12:18:45,236 [INFO] ETL Pipeline basliyor...
+2026-04-29 12:18:45,312 [INFO] Fact ve dim tablolar temizlendi (dim_member korundu — SCD2).
+2026-04-29 12:18:45,313 [INFO] dim_date yukleniyor...
+2026-04-29 12:18:45,400 [INFO] dim_date araligi: 2021-12-01 → 2028-06-21
+2026-04-29 12:18:45,641 [INFO] dim_date: 2395 gun yuklendi.
+2026-04-29 12:18:45,656 [INFO] [OK] dim_date: 2395 satir, 0.33 sn
+2026-04-29 12:18:45,657 [INFO] dim_plan yukleniyor...
+2026-04-29 12:18:45,673 [INFO] dim_plan: 5 plan yuklendi.
+2026-04-29 12:18:45,681 [INFO] [OK] dim_plan: 5 satir, 0.02 sn
+2026-04-29 12:18:45,682 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:18:46,021 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:18:46,069 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:18:46,081 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:18:46,107 [INFO] [OK] dim_member: 13804 satir, 0.41 sn
+2026-04-29 12:18:46,107 [INFO] fact_payments yukleniyor...
+2026-04-29 12:19:19,402 [INFO] fact_payments: 368229 kayit yuklendi.
+2026-04-29 12:19:19,562 [INFO] [OK] fact_payments: 368229 satir, 33.45 sn
+2026-04-29 12:19:19,562 [INFO] fact_lottery yukleniyor...
+2026-04-29 12:19:21,679 [INFO] fact_lottery: 14973 kayit yuklendi.
+2026-04-29 12:19:21,702 [INFO] [OK] fact_lottery: 14973 satir, 2.13 sn
+2026-04-29 12:19:21,702 [INFO] ==================================================
+2026-04-29 12:19:21,702 [INFO] SATIR KAYBI RAPORU
+2026-04-29 12:19:21,789 [INFO] staging.members  → toplam     : 15004
+2026-04-29 12:19:21,789 [INFO]   - NULL tc_hash filtresi      : 1200
+2026-04-29 12:19:21,789 [INFO]   - Duplike (tc_hash bazlı)    : 0
+2026-04-29 12:19:21,789 [INFO]   = Beklenen dim_member        : 13804
+2026-04-29 12:19:21,789 [INFO]   dim_member (is_current)      : 15001
+2026-04-29 12:19:21,790 [INFO]   Fark (SCD2 birikimi dahil)   : 1197
+2026-04-29 12:19:21,892 [INFO] staging.payments → toplam     : 368297
+2026-04-29 12:19:21,893 [INFO]   - FK mismatch (member yok)   : 68
+2026-04-29 12:19:21,893 [INFO]   fact_payments               : 368229
+2026-04-29 12:19:21,893 [INFO]   Açıklanamayan kayıp          : 0
+2026-04-29 12:19:21,893 [INFO] ==================================================
+2026-04-29 12:19:21,894 [INFO] Pipeline tamamlandi. Toplam sure: 36.66 sn
+2026-04-29 12:19:21,894 [INFO] ==================================================
+2026-04-29 12:20:33,373 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:20:33,731 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:20:33,780 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:20:33,794 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:20:33,890 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:20:34,449 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:20:34,514 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:20:34,529 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:20:34,561 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:20:34,928 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:20:34,969 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:20:34,985 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:20:35,091 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:20:35,361 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:20:35,403 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:20:35,412 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:20:35,429 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:20:35,658 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:20:35,696 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:20:35,706 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:20:35,794 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:20:36,094 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:20:36,139 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:20:36,149 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:20:36,164 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:20:36,356 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:20:36,393 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:20:36,402 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:20:36,476 [INFO] ==================================================
+2026-04-29 12:20:36,477 [INFO] ETL Pipeline basliyor...
+2026-04-29 12:20:36,581 [INFO] Fact ve dim tablolar temizlendi (dim_member korundu — SCD2).
+2026-04-29 12:20:36,581 [INFO] dim_date yukleniyor...
+2026-04-29 12:20:36,700 [INFO] dim_date araligi: 2021-12-01 → 2028-06-21
+2026-04-29 12:20:36,923 [INFO] dim_date: 2395 gun yuklendi.
+2026-04-29 12:20:36,932 [INFO] [OK] dim_date: 2395 satir, 0.34 sn
+2026-04-29 12:20:36,932 [INFO] dim_plan yukleniyor...
+2026-04-29 12:20:36,947 [INFO] dim_plan: 5 plan yuklendi.
+2026-04-29 12:20:36,955 [INFO] [OK] dim_plan: 5 satir, 0.02 sn
+2026-04-29 12:20:36,956 [INFO] dim_member SCD2 yukleniyor...
+2026-04-29 12:20:37,120 [INFO] Staging'den 13804 kayit alindi.
+2026-04-29 12:20:37,157 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-29 12:20:37,166 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-29 12:20:37,185 [INFO] [OK] dim_member: 13804 satir, 0.22 sn
+2026-04-29 12:20:37,185 [INFO] fact_payments yukleniyor...
+2026-04-29 12:21:12,109 [INFO] fact_payments: 368229 kayit yuklendi.
+2026-04-29 12:21:12,279 [INFO] [OK] fact_payments: 368229 satir, 35.09 sn
+2026-04-29 12:21:12,279 [INFO] fact_lottery yukleniyor...
+2026-04-29 12:21:14,946 [INFO] fact_lottery: 14973 kayit yuklendi.
+2026-04-29 12:21:14,972 [INFO] [OK] fact_lottery: 14973 satir, 2.69 sn
+2026-04-29 12:21:14,972 [INFO] ==================================================
+2026-04-29 12:21:14,973 [INFO] SATIR KAYBI RAPORU
+2026-04-29 12:21:15,079 [INFO] staging.members  → toplam     : 15004
+2026-04-29 12:21:15,079 [INFO]   - NULL tc_hash filtresi      : 1200
+2026-04-29 12:21:15,079 [INFO]   - Duplike (tc_hash bazlı)    : 0
+2026-04-29 12:21:15,080 [INFO]   = Beklenen dim_member        : 13804
+2026-04-29 12:21:15,080 [INFO]   dim_member (is_current)      : 15001
+2026-04-29 12:21:15,080 [INFO]   Fark (SCD2 birikimi dahil)   : 1197
+2026-04-29 12:21:15,190 [INFO] staging.payments → toplam     : 368297
+2026-04-29 12:21:15,190 [INFO]   - FK mismatch (member yok)   : 68
+2026-04-29 12:21:15,191 [INFO]   fact_payments               : 368229
+2026-04-29 12:21:15,191 [INFO]   Açıklanamayan kayıp          : 0
+2026-04-29 12:21:15,191 [INFO] ==================================================
+2026-04-29 12:21:15,192 [INFO] Pipeline tamamlandi. Toplam sure: 38.71 sn
+2026-04-29 12:21:15,192 [INFO] ==================================================
