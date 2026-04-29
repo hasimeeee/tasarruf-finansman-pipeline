@@ -53,15 +53,6 @@ DB = _db
 def get_conn():
     return psycopg2.connect(**DB)
 
-def log_pipeline_run(conn, stage: str, status: str, rows: int = 0,
-                     duration: float = 0.0, error: str = None):
-    """pipeline_runs tablosuna kayıt atar."""
-    cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO pipeline_runs (stage, status, rows_inserted, duration_sec, error_msg)
-        VALUES (%s, %s, %s, %s, %s)
-    """, (stage, status, rows, duration, error))
-    conn.commit()
 
 # ==========================================
 # LOAD FONKSİYONLARI
@@ -95,7 +86,8 @@ def load_dim_date(conn):
 
     # Güvenli fallback + biraz buffer (ayın başı/sonu için)
     start = (min_date_raw or date(2022, 1, 1)).replace(day=1)
-    end   = (max_date_raw or date.today()) + timedelta(days=90)
+    end   = (max_date_raw or date.today()).replace(day=28) + timedelta(days=4)
+    end   = end.replace(day=1) - timedelta(days=1)  # ayın son günü
 
     log.info(f"dim_date araligi: {start} → {end}")
 
@@ -109,7 +101,7 @@ def load_dim_date(conn):
     execute_values(cur, """
         INSERT INTO dim_date
         (date_key, full_date, day, month, quarter, year,
-         day_of_week, is_weekend, is_holiday, is_ramadan)
+         day_of_week, day_name, month_name, is_weekend, is_holiday, is_ramadan)
         VALUES %s
         ON CONFLICT (date_key) DO NOTHING
     """, records, page_size=1000)
@@ -307,16 +299,24 @@ def load_fact_lottery(conn):
 
     records = []
     for row in rows:
-        lottery_id, member_key, plan_key, date_key, \
-        lottery_round, is_winner, member_id, lottery_date, signup_date = row
+        (
+            lottery_id, member_key, plan_key, date_key,
+            lottery_round, is_winner, member_id,
+            lottery_date, signup_date
+        ) = row
 
+        # Kura tarihine kadar ödenen taksit sayısı
         paid_before_lottery = sum(
             1 for d in member_payments[member_id]
             if d <= lottery_date
         )
 
+        # Düzeltme: signup_date bazlı hesap (sabit 2022-01 değil)
         delta = relativedelta(lottery_date, signup_date)
-        months_elapsed = max(1, delta.years * 12 + delta.months)
+        months_elapsed = max(
+            1,
+            delta.years * 12 + delta.months + (1 if delta.days > 0 else 0)
+        )
 
         ratio = round(paid_before_lottery / months_elapsed, 4)
         ratio = min(ratio, 1.0)
@@ -326,7 +326,6 @@ def load_fact_lottery(conn):
             lottery_round, is_winner, ratio
         ))
 
-    # Döngü bitti — şimdi toplu yaz
     execute_values(cur, """
         INSERT INTO fact_lottery
         (lottery_id, member_key, plan_key, date_key,
@@ -338,6 +337,8 @@ def load_fact_lottery(conn):
     conn.commit()
     log.info(f"fact_lottery: {len(records)} kayit yuklendi.")
     return len(records)
+
+
 # ==========================================
 # DATA QUALITY RAPORU — Satır Kaybı Özeti
 # ==========================================
@@ -359,22 +360,22 @@ def log_row_loss_report(conn):
     null_tc = cur.fetchone()[0]
 
     cur.execute("""
-        SELECT COUNT(*) - COUNT(DISTINCT tc_hash) 
-        FROM staging.members
-        WHERE tc_hash IS NOT NULL AND tc_hash != ''
+        SELECT COUNT(*) FROM (
+            SELECT member_id FROM staging.members
+            WHERE tc_hash IS NOT NULL AND tc_hash != ''
+            GROUP BY tc_hash HAVING COUNT(*) > 1
+        ) t
     """)
     duplicate_members = cur.fetchone()[0]
 
-    cur.execute("SELECT COUNT(DISTINCT member_id) FROM dim_member WHERE is_current = TRUE")
+    cur.execute("SELECT COUNT(*) FROM dim_member WHERE is_current = TRUE")
     dim_member_count = cur.fetchone()[0]
 
-    expected = staging_members_total - null_tc - duplicate_members
     log.info(f"staging.members  → toplam     : {staging_members_total}")
     log.info(f"  - NULL tc_hash filtresi      : {null_tc}")
     log.info(f"  - Duplike (tc_hash bazlı)    : {duplicate_members}")
-    log.info(f"  = Beklenen dim_member        : {expected}")
     log.info(f"  dim_member (is_current)      : {dim_member_count}")
-    log.info(f"  Fark (SCD2 birikimi dahil)   : {dim_member_count - expected}")
+    log.info(f"  Açıklanamayan kayıp          : {staging_members_total - null_tc - duplicate_members - dim_member_count}")
 
     # --- payments ---
     cur.execute("SELECT COUNT(*) FROM staging.payments")
@@ -435,12 +436,10 @@ def run_pipeline():
         try:
             rows = fn(conn)
             dur  = round(time.time() - t1, 2)
-            log_pipeline_run(conn, stage, "success", rows, dur)
             log.info(f"[OK] {stage}: {rows} satir, {dur} sn")
         except Exception as e:
             conn.rollback()
             log.error(f"[HATA] {stage}: {e}")
-            log_pipeline_run(conn, stage, "failed", error=str(e))
 
     # Satır kaybı raporu
     try:
