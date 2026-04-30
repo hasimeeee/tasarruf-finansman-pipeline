@@ -1310,3 +1310,41 @@ DETAIL:  Key (date_key)=(20260306) is not present in table "dim_date".
 2026-04-30 10:47:17,812 [INFO] ==================================================
 2026-04-30 10:47:17,813 [INFO] Pipeline tamamlandi. Toplam sure: 39.47 sn
 2026-04-30 10:47:17,813 [INFO] ==================================================
+2026-04-30 11:06:16,231 [INFO] === Statü geçiş simülasyonu başlıyor: M00100 ===
+2026-04-30 11:06:16,231 [INFO] Adım 1: aktif
+2026-04-30 11:06:16,248 [INFO] dim_member SCD2 yukleniyor...
+2026-04-30 11:06:16,414 [INFO] Staging'den 13804 kayit alindi.
+2026-04-30 11:06:16,453 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-30 11:06:16,461 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-30 11:06:16,469 [INFO] Adım 2: gecikmeli
+2026-04-30 11:06:16,479 [INFO] dim_member SCD2 yukleniyor...
+2026-04-30 11:06:16,950 [INFO] Staging'den 13804 kayit alindi.
+2026-04-30 11:06:16,990 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-30 11:06:17,003 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-30 11:06:17,012 [INFO] Adım 3: terk
+2026-04-30 11:06:17,028 [INFO] dim_member SCD2 yukleniyor...
+2026-04-30 11:06:17,342 [INFO] Staging'den 13804 kayit alindi.
+2026-04-30 11:06:17,421 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-30 11:06:17,442 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-30 11:06:17,476 [INFO] === M00100 için dim_member geçmişi ===
+2026-04-30 11:06:17,478 [INFO]   M00100 | aktif      | 2024-10-22 → 9999-12-31 | is_current=True
+2026-04-30 11:12:17,171 [INFO] === Statü geçiş simülasyonu başlıyor: M00002 ===
+2026-04-30 11:12:17,171 [INFO] Adım 1: aktif
+2026-04-30 11:12:17,185 [INFO] dim_member SCD2 yukleniyor...
+2026-04-30 11:12:17,308 [INFO] Staging'den 13804 kayit alindi.
+2026-04-30 11:12:17,333 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-30 11:12:17,341 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-30 11:12:17,346 [INFO] Adım 2: gecikmeli
+2026-04-30 11:12:17,354 [INFO] dim_member SCD2 yukleniyor...
+2026-04-30 11:12:17,510 [INFO] Staging'den 13804 kayit alindi.
+2026-04-30 11:12:17,559 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-30 11:12:17,582 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 1 guncellendi, 13803 atlandi.
+2026-04-30 11:12:17,592 [INFO] Adım 3: terk
+2026-04-30 11:12:17,600 [INFO] dim_member SCD2 yukleniyor...
+2026-04-30 11:12:17,909 [INFO] Staging'den 13804 kayit alindi.
+2026-04-30 11:12:18,020 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-30 11:12:18,066 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 1 guncellendi, 13803 atlandi.
+2026-04-30 11:12:18,086 [INFO] === M00002 için dim_member geçmişi ===
+2026-04-30 11:12:18,087 [INFO]   M00002 | aktif      | 2022-05-26 → 2026-04-30 | is_current=False
+2026-04-30 11:12:18,087 [INFO]   M00002 | gecikmeli  | 2026-02-20 → 2026-04-30 | is_current=False
+2026-04-30 11:12:18,088 [INFO]   M00002 | terk       | 2026-02-20 → None | is_current=True
