@@ -1276,3 +1276,37 @@ DETAIL:  Key (date_key)=(20260306) is not present in table "dim_date".
 2026-04-29 15:11:42,116 [INFO] ==================================================
 2026-04-29 15:11:42,117 [INFO] Pipeline tamamlandi. Toplam sure: 18.75 sn
 2026-04-29 15:11:42,117 [INFO] ==================================================
+2026-04-30 10:46:38,336 [INFO] ==================================================
+2026-04-30 10:46:38,339 [INFO] ETL Pipeline basliyor...
+2026-04-30 10:46:38,669 [INFO] dim_date yukleniyor...
+2026-04-30 10:46:39,205 [INFO] dim_date araligi: 2021-12-01 → 2028-03-31
+2026-04-30 10:46:40,076 [INFO] dim_date: 2313 gun yuklendi.
+2026-04-30 10:46:40,142 [INFO] [OK] dim_date: 2313 satir, 1.41 sn
+2026-04-30 10:46:40,147 [INFO] dim_plan yukleniyor...
+2026-04-30 10:46:40,201 [INFO] dim_plan: 5 plan yuklendi.
+2026-04-30 10:46:40,237 [INFO] [OK] dim_plan: 5 satir, 0.06 sn
+2026-04-30 10:46:40,239 [INFO] dim_member SCD2 yukleniyor...
+2026-04-30 10:46:41,148 [INFO] Staging'den 13804 kayit alindi.
+2026-04-30 10:46:41,493 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-04-30 10:46:41,527 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13804 atlandi.
+2026-04-30 10:46:41,580 [INFO] [OK] dim_member: 13804 satir, 1.31 sn
+2026-04-30 10:46:41,584 [INFO] fact_payments yukleniyor...
+2026-04-30 10:47:14,695 [INFO] fact_payments: 368229 kayit yuklendi.
+2026-04-30 10:47:14,907 [INFO] [OK] fact_payments: 368229 satir, 33.31 sn
+2026-04-30 10:47:14,907 [INFO] fact_lottery yukleniyor...
+2026-04-30 10:47:17,560 [INFO] fact_lottery: 14973 kayit yuklendi.
+2026-04-30 10:47:17,587 [INFO] [OK] fact_lottery: 14973 satir, 2.67 sn
+2026-04-30 10:47:17,587 [INFO] ==================================================
+2026-04-30 10:47:17,588 [INFO] SATIR KAYBI RAPORU
+2026-04-30 10:47:17,624 [INFO] staging.members  → toplam     : 15004
+2026-04-30 10:47:17,624 [INFO]   - NULL tc_hash filtresi      : 1200
+2026-04-30 10:47:17,625 [INFO]   - Duplike (tc_hash bazlı)    : 0
+2026-04-30 10:47:17,625 [INFO]   dim_member (is_current)      : 15001
+2026-04-30 10:47:17,626 [INFO]   Açıklanamayan kayıp          : -1197
+2026-04-30 10:47:17,811 [INFO] staging.payments → toplam     : 368297
+2026-04-30 10:47:17,811 [INFO]   - FK mismatch (member yok)   : 68
+2026-04-30 10:47:17,812 [INFO]   fact_payments               : 368229
+2026-04-30 10:47:17,812 [INFO]   Açıklanamayan kayıp          : 0
+2026-04-30 10:47:17,812 [INFO] ==================================================
+2026-04-30 10:47:17,813 [INFO] Pipeline tamamlandi. Toplam sure: 39.47 sn
+2026-04-30 10:47:17,813 [INFO] ==================================================

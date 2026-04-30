@@ -148,7 +148,6 @@ def load_dim_plan(conn):
     log.info(f"dim_plan: {len(records)} plan yuklendi.")
     return len(records)
 
-
 def load_dim_member_scd2(conn):
     """
     SCD Type 2 ile dim_member'ı günceller.
