@@ -149,6 +149,51 @@ def load_dim_plan(conn):
     log.info(f"dim_plan: {len(records)} plan yuklendi.")
     return len(records)
 
+def load_dim_branch(conn):
+    log.info("dim_branch yukleniyor...")
+    cur = conn.cursor()
+
+    # 1️⃣ Değişen kayıtları KAPAT (SCD2)
+    cur.execute("""
+        UPDATE dim_branch d
+        SET valid_to = CURRENT_DATE,
+            is_current = FALSE
+        FROM staging.branches s
+        WHERE d.branch_id = s.branch_id
+          AND d.is_current = TRUE
+          AND (
+                d.branch_name != s.branch_name OR
+                d.city != s.city
+          )
+    """)
+
+    updated = cur.rowcount
+
+    # 2️⃣ YENİ ve DEĞİŞEN kayıtları INSERT et
+    cur.execute("""
+        INSERT INTO dim_branch (branch_id, branch_name, city, is_current, valid_from)
+        SELECT 
+            s.branch_id,
+            s.branch_name,
+            s.city,
+            TRUE,
+            CURRENT_DATE
+        FROM staging.branches s
+        LEFT JOIN dim_branch d
+            ON s.branch_id = d.branch_id
+            AND d.is_current = TRUE
+        WHERE d.branch_id IS NULL
+    """)
+
+    inserted = cur.rowcount
+
+    conn.commit()
+
+    total = inserted + updated
+    log.info(f"dim_branch: {inserted} eklendi, {updated} guncellendi")
+
+    return total
+
 
 def load_dim_member_scd2(conn):
     """
@@ -439,6 +484,7 @@ def run_pipeline():
     steps = [
         ("dim_date",      load_dim_date),
         ("dim_plan",      load_dim_plan),
+        ("dim_branch",    load_dim_branch),
         ("dim_member",    load_dim_member_scd2),
         ("fact_payments", load_fact_payments),
         ("fact_lottery",  load_fact_lottery),
