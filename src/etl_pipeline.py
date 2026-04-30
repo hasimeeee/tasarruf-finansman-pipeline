@@ -53,6 +53,9 @@ DB = _db
 def get_conn():
     return psycopg2.connect(**DB)
 
+def log_pipeline_run(conn, stage: str, status: str, rows: int = 0,
+                     duration: float = 0.0, error: str = None):
+
 
 # ==========================================
 # LOAD FONKSİYONLARI
