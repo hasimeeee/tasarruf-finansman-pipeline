@@ -5,51 +5,53 @@ dim_member'da tarihsel kayıt görünmeli.
 
 import sys
 import os
-from datetime import date, timedelta
 
 sys.path.append(os.path.dirname(__file__))
-from config_loader import load_config
 from etl_pipeline import get_conn, load_dim_member_scd2
 from utils.logger import get_logger
 
 log = get_logger("simulasyon")
 
+
 def simulate_status_transitions():
     conn = get_conn()
     cur = conn.cursor()
-
-    # Simüle edilecek üye
     member_id = "M00002"
 
     log.info(f"=== Statü geçiş simülasyonu başlıyor: {member_id} ===")
 
-    # ADIM 1: Üyeyi aktif olarak staging'e ekle
+    # Temizle — önceki çalışmadan kalan kayıtları sil
+    # FK sırası önemli: önce fact tabloları, sonra dim
+    cur.execute("""
+        DELETE FROM fact_payments
+        WHERE member_key IN (
+            SELECT member_key FROM dim_member WHERE member_id = %s
+        )
+    """, (member_id,))
+    cur.execute("""
+        DELETE FROM fact_lottery
+        WHERE member_key IN (
+            SELECT member_key FROM dim_member WHERE member_id = %s
+        )
+    """, (member_id,))
+    cur.execute("DELETE FROM dim_member WHERE member_id = %s", (member_id,))
+    conn.commit()
+
+    # ADIM 1: aktif
     log.info("Adım 1: aktif")
-    cur.execute("""
-        UPDATE staging.members
-        SET member_status = 'aktif'
-        WHERE member_id = %s
-    """, (member_id,))
+    cur.execute("UPDATE staging.members SET member_status = 'aktif' WHERE member_id = %s", (member_id,))
     conn.commit()
     load_dim_member_scd2(conn)
 
-    # ADIM 2: Statüyü gecikmeli yap
+    # ADIM 2: gecikmeli
     log.info("Adım 2: gecikmeli")
-    cur.execute("""
-        UPDATE staging.members
-        SET member_status = 'gecikmeli'
-        WHERE member_id = %s
-    """, (member_id,))
+    cur.execute("UPDATE staging.members SET member_status = 'gecikmeli' WHERE member_id = %s", (member_id,))
     conn.commit()
     load_dim_member_scd2(conn)
 
-    # ADIM 3: Statüyü terk yap
+    # ADIM 3: terk
     log.info("Adım 3: terk")
-    cur.execute("""
-        UPDATE staging.members
-        SET member_status = 'terk'
-        WHERE member_id = %s
-    """, (member_id,))
+    cur.execute("UPDATE staging.members SET member_status = 'terk' WHERE member_id = %s", (member_id,))
     conn.commit()
     load_dim_member_scd2(conn)
 
@@ -67,6 +69,7 @@ def simulate_status_transitions():
         log.info(f"  {row[0]} | {row[1]:10} | {row[2]} → {row[3]} | is_current={row[4]}")
 
     conn.close()
+
 
 if __name__ == "__main__":
     simulate_status_transitions()

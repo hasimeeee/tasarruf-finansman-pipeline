@@ -53,16 +53,6 @@ DB = _db
 def get_conn():
     return psycopg2.connect(**DB)
 
-def log_pipeline_run(conn, stage: str, status: str, rows: int = 0,
-                     duration: float = 0.0, error: str = None):
-    """pipeline_runs tablosuna kayıt atar."""
-    cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO pipeline_runs (stage, status, rows_inserted, duration_sec, error_msg)
-        VALUES (%s, %s, %s, %s, %s)
-    """, (stage, status, rows, duration, error))
-    conn.commit()
-
 
 # ==========================================
 # LOAD FONKSİYONLARI
@@ -148,6 +138,7 @@ def load_dim_plan(conn):
     log.info(f"dim_plan: {len(records)} plan yuklendi.")
     return len(records)
 
+
 def load_dim_member_scd2(conn):
     """
     SCD Type 2 ile dim_member'ı günceller.
@@ -192,8 +183,8 @@ def load_dim_member_scd2(conn):
         existing_status = existing_members.get(member_id)
 
         if existing_status is None:
-            # Yeni üye → direkt ekle
-            record = transform_dim_member_record(row)
+            # Yeni üye → valid_from = signup_date
+            record = transform_dim_member_record(row, valid_from=row[7])
             cur.execute("""
                 INSERT INTO dim_member
                 (member_id, full_name, tc_hash, city, district,
@@ -205,14 +196,14 @@ def load_dim_member_scd2(conn):
             inserted += 1
 
         elif existing_status != new_status:
-            # Statü değişmiş → SCD2: eski kaydı kapat + yeni kayıt ekle
+            # Statü değişmiş → eski kaydı kapat, valid_from = today
             cur.execute("""
                 UPDATE dim_member
                 SET valid_to = %s, is_current = FALSE
                 WHERE member_id = %s AND is_current = TRUE
             """, (today, member_id))
 
-            record = transform_dim_member_record(row)
+            record = transform_dim_member_record(row, valid_from=today)
             cur.execute("""
                 INSERT INTO dim_member
                 (member_id, full_name, tc_hash, city, district,

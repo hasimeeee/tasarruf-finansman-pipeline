@@ -177,13 +177,18 @@ def transform_dim_plan_record(row: tuple) -> tuple:
     return (plan_id, plan_name, plan_type, duration_months, target_amount, monthly)
  
  
-def transform_dim_member_record(row: tuple) -> tuple:
+def transform_dim_member_record(row: tuple, valid_from: date = None) -> tuple:
     """
     staging.members satırını dim_member satırına dönüştürür.
  
     Giriş: (member_id, full_name, tc_hash, city, district,
             birth_date, income, signup_date, member_status)
     NOT: etl_pipeline.py sorgusu bu sırayla döndürüyor — değiştirme.
+ 
+    valid_from parametresi:
+      - İlk kayıt (yeni üye) → signup_date
+      - Statü değişimi (SCD2 güncelleme) → today (değişimin olduğu gün)
+      Dışarıdan verilmezse signup_date kullanılır (geriye dönük uyumluluk).
  
     Döndürür: (member_id, full_name, tc_hash, city, district,
                age_group, income_bracket, signup_date,
@@ -192,16 +197,18 @@ def transform_dim_member_record(row: tuple) -> tuple:
     (member_id, full_name, tc_hash, city, district,
      birth_date, income, signup_date, member_status) = row
  
-    today      = date.today()
-    ag         = get_age_group(birth_date)          # DATE veya int her ikisi de çalışır
-    ib         = get_income_bracket(income or 0)
-    churn      = today if member_status == "terk" else None
-    valid_from = signup_date or today
+    today  = date.today()
+    ag     = get_age_group(birth_date)
+    ib     = get_income_bracket(income or 0)
+    churn  = today if member_status == "terk" else None
+ 
+    # valid_from dışarıdan verilmemişse signup_date kullan (yeni üye)
+    vf = valid_from if valid_from is not None else (signup_date or today)
  
     return (
         member_id, full_name, tc_hash, city, district,
         ag, ib, signup_date, member_status, churn,
-        valid_from, None, True
+        vf, None, True
     )
  
  
