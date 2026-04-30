@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS pipeline_runs (
     stage           VARCHAR(50),
     status          VARCHAR(20),
     rows_inserted   INTEGER,
-    duration_sec    NUMERIC(8, 2),
+    duration_sec    NUMERIC(10, 2),
     error_msg       TEXT
 );
 

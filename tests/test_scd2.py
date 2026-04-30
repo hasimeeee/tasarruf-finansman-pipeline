@@ -177,13 +177,17 @@ def test_pipeline_run_log_tablosuna_yazma(conn):
     
     cur.execute("SELECT COUNT(*) FROM pipeline_runs")
     before = cur.fetchone()[0]
-    conn.commit()  # ← mevcut transaction'ı kapat
+    conn.commit()
 
     run_pipeline()
 
-    # Yeni bir okuma yap
-    conn.rollback()  # ← cache'i temizle, taze veri oku
-    cur.execute("SELECT COUNT(*) FROM pipeline_runs")
-    after = cur.fetchone()[0]
+    # pipeline kendi connection'ını açıp commit'liyor
+    # aynı conn üzerinden okumak eski snapshot'ı görüyor
+    # yeni connection açarak taze veri oku
+    new_conn = get_conn()
+    new_cur = new_conn.cursor()
+    new_cur.execute("SELECT COUNT(*) FROM pipeline_runs")
+    after = new_cur.fetchone()[0]
+    new_conn.close()
 
     assert after > before, "Pipeline run log tablosuna yazılmadı!"
