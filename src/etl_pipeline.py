@@ -55,6 +55,13 @@ def get_conn():
 
 def log_pipeline_run(conn, stage: str, status: str, rows: int = 0,
                      duration: float = 0.0, error: str = None):
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO pipeline_runs (stage, status, rows_inserted, duration_sec, error_msg)
+        VALUES (%s, %s, %s, %s, %s)
+    """, (stage, status, rows, duration, error))
+    conn.commit()
+    duration: float = 0.0, error: str = None):
 
 
 # ==========================================
