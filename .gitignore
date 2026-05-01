@@ -9,3 +9,6 @@ __pycache__/
 .vscode/
 
 config.yaml
+
+logs/
+*.log
