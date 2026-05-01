@@ -169,22 +169,22 @@ def load_dim_branch(conn):
 
     updated = cur.rowcount
 
-    # 2️⃣ YENİ ve DEĞİŞEN kayıtları INSERT et
     cur.execute("""
-        INSERT INTO dim_branch (branch_id, branch_name, city, is_current, valid_from)
-        SELECT 
-            s.branch_id,
-            s.branch_name,
-            s.city,
-            TRUE,
-            CURRENT_DATE
-        FROM staging.branches s
-        LEFT JOIN dim_branch d
-            ON s.branch_id = d.branch_id
-            AND d.is_current = TRUE
-        WHERE d.branch_id IS NULL
-    """)
-
+    INSERT INTO dim_branch (branch_id, branch_name, city, region, open_date, is_current, valid_from)
+    SELECT 
+        s.branch_id,
+        s.branch_name,
+        s.city,
+        s.region,
+        s.open_date,
+        TRUE,
+        CURRENT_DATE
+    FROM staging.branches s
+    LEFT JOIN dim_branch d
+        ON s.branch_id = d.branch_id
+        AND d.is_current = TRUE
+    WHERE d.branch_id IS NULL
+""")
     inserted = cur.rowcount
 
     conn.commit()
