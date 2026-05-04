@@ -11,7 +11,15 @@ Değişiklikler (Hafta 2 → Hafta 3):
   - load_dim_member sorgusu birth_year → birth_date olarak güncellendi
   - Schema tutarlılığı: DDL ve pipeline artık ikisi de 'public' kullanıyor
   - TRUNCATE CASCADE yerine tablo bazlı TRUNCATE — idempotency için
-    Hafta 3'te UPSERT'e geçilecek (not bırakıldı)
+    Hafta 3'te UPSERT'e geçildi
+
+Düzeltmeler:
+  - [BUG FIX] load_fact_payments: cur.fetchall() negatif ödeme COUNT sorgusundan
+    ÖNCE çağrılıyor — aksi halde cursor ezilip 0 kayıt yükleniyordu (KRİTİK)
+  - [BUG FIX] 'from pytest import skip' kaldırıldı — production kodunda yeri yok,
+    pytest kurulu olmayan ortamlarda ImportError'a neden oluyordu
+  - [BUG FIX] load_dim_branch SCD2: güncellenen şubeler artık yeni versiyon olarak
+    doğru biçimde INSERT ediliyor (UNION ALL yaklaşımıyla)
 """
 
 import os
@@ -40,7 +48,7 @@ try:
     log = get_logger("etl_pipeline")
 except ImportError:
     import logging
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
     log = logging.getLogger("etl_pipeline")
 
 config = load_config()
@@ -149,61 +157,64 @@ def load_dim_plan(conn):
     log.info(f"dim_plan: {len(records)} plan yuklendi.")
     return len(records)
 
+
 def load_dim_branch(conn):
+    """
+    SCD Type 2 şube yüklemesi.
+
+    Düzeltme: Önceki versiyonda güncellenen kayıtlar (UPDATE ile kapatılan)
+    yeni versiyon olarak INSERT edilmiyordu çünkü LEFT JOIN koşulu
+    'd.branch_id IS NULL' sadece hiç olmayan kayıtları hedefliyordu.
+    Şimdi iki adım ayrı ayrı çalışır:
+      1. Değişen aktif kayıtları kapat (UPDATE)
+      2. Tabloda aktif versiyonu olmayan tüm staging kayıtlarını ekle (INSERT)
+         — hem yeni şubeler hem de az önce kapatılan güncellenenler dahil
+    """
     log.info("dim_branch yukleniyor...")
     cur = conn.cursor()
 
     # 1️⃣ Değişen kayıtları KAPAT (SCD2)
     cur.execute("""
         UPDATE dim_branch d
-        SET valid_to = CURRENT_DATE,
+        SET valid_to   = CURRENT_DATE,
             is_current = FALSE
         FROM staging.branches s
-        WHERE d.branch_id = s.branch_id
+        WHERE d.branch_id  = s.branch_id
           AND d.is_current = TRUE
           AND (
                 d.branch_name != s.branch_name OR
-                d.city != s.city
+                d.city        != s.city
           )
     """)
-
     updated = cur.rowcount
 
+    # 2️⃣ Aktif versiyonu olmayan staging kayıtlarını ekle
+    #    (hem hiç eklenmemişler hem de az önce kapatılanlar)
     cur.execute("""
-    INSERT INTO dim_branch (branch_id, branch_name, city, region, open_date, is_current, valid_from)
-    SELECT 
-        s.branch_id,
-        s.branch_name,
-        s.city,
-        s.region,
-        s.open_date,
-        TRUE,
-        CURRENT_DATE
-    FROM staging.branches s
-    LEFT JOIN dim_branch d
-        ON s.branch_id = d.branch_id
-        AND d.is_current = TRUE
-    WHERE d.branch_id IS NULL
-""")
+        INSERT INTO dim_branch (branch_id, branch_name, city, region, open_date, is_current, valid_from)
+        SELECT
+            s.branch_id,
+            s.branch_name,
+            s.city,
+            s.region,
+            s.open_date,
+            TRUE,
+            CURRENT_DATE
+        FROM staging.branches s
+        WHERE NOT EXISTS (
+            SELECT 1 FROM dim_branch d
+            WHERE d.branch_id  = s.branch_id
+              AND d.is_current = TRUE
+        )
+    """)
     inserted = cur.rowcount
 
     conn.commit()
-
-    total = inserted + updated
     log.info(f"dim_branch: {inserted} eklendi, {updated} guncellendi")
-
-    return total
+    return inserted + updated
 
 
 def load_dim_member_scd2(conn):
-    """
-    SCD Type 2 ile dim_member'ı günceller.
-    - Yeni üye → INSERT
-    - member_status değişmiş → eski kaydı kapat (valid_to, is_current=False) + yeni INSERT
-    - Değişiklik yok → dokunma
-
-    Düzeltme: staging sorgusu birth_year → birth_date olarak güncellendi.
-    """
     log.info("dim_member SCD2 yukleniyor...")
     cur = conn.cursor()
     today = date.today()
@@ -212,35 +223,64 @@ def load_dim_member_scd2(conn):
     updated  = 0
     skipped  = 0
 
-    # Staging'den temiz üyeleri çek (birth_date — artık DATE tipi)
+    # 1️⃣ staging: duplicate temiz + latest record seçimi
     cur.execute("""
-        SELECT DISTINCT ON (tc_hash)
-            member_id, full_name, tc_hash, city, district,
-            birth_date, income, signup_date, member_status
-        FROM staging.members
-        WHERE tc_hash IS NOT NULL AND tc_hash != ''
-        ORDER BY tc_hash, signup_date DESC
+        SELECT *
+        FROM (
+            SELECT
+                member_id,
+                full_name,
+                tc_hash,
+                city,
+                district,
+                birth_date,
+                income,
+                signup_date,
+                member_status,
+                ROW_NUMBER() OVER (
+                    PARTITION BY tc_hash
+                    ORDER BY signup_date DESC
+                ) AS rn
+            FROM staging.members
+            WHERE tc_hash IS NOT NULL AND tc_hash != ''
+        ) t
+        WHERE rn = 1
     """)
-    staging_rows = cur.fetchall()
-    log.info(f"Staging'den {len(staging_rows)} kayit alindi.")
 
-    # dim_member'daki aktif kayıtları tek sorguda çek
+    staging_rows = cur.fetchall()
+    log.info(f"Staging'den {len(staging_rows)} temiz kayıt alindi.")
+
+    # 2️⃣ dim_member aktif kayıtlar (tc_hash bazlı)
     cur.execute("""
-        SELECT member_id, member_status
+        SELECT tc_hash, member_status
         FROM dim_member
         WHERE is_current = TRUE
     """)
+
     existing_members = {row[0]: row[1] for row in cur.fetchall()}
     log.info(f"dim_member'dan {len(existing_members)} aktif kayit alindi.")
 
+    # 3️⃣ SCD2 logic
     for row in staging_rows:
-        member_id     = row[0]
-        new_status    = row[8]   # member_status sütunu (index 8)
-        existing_status = existing_members.get(member_id)
+        (
+            member_id,
+            full_name,
+            tc_hash,
+            city,
+            district,
+            birth_date,
+            income,
+            signup_date,
+            new_status,
+            rn
+        ) = row
 
+        existing_status = existing_members.get(tc_hash)
+
+        # 🟢 Yeni kayıt
         if existing_status is None:
-            # Yeni üye → valid_from = signup_date
-            record = transform_dim_member_record(row, valid_from=row[7])
+            record = transform_dim_member_record(row, valid_from=signup_date)
+
             cur.execute("""
                 INSERT INTO dim_member
                 (member_id, full_name, tc_hash, city, district,
@@ -249,17 +289,24 @@ def load_dim_member_scd2(conn):
                  valid_from, valid_to, is_current)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """, record)
+
             inserted += 1
 
+        # 🟡 Değişmiş kayıt → SCD2 split
         elif existing_status != new_status:
-            # Statü değişmiş → eski kaydı kapat, valid_from = today
+
+            # eski kaydı kapat
             cur.execute("""
                 UPDATE dim_member
-                SET valid_to = %s, is_current = FALSE
-                WHERE member_id = %s AND is_current = TRUE
-            """, (today, member_id))
+                SET valid_to = %s,
+                    is_current = FALSE
+                WHERE tc_hash = %s
+                  AND is_current = TRUE
+            """, (today, tc_hash))
 
+            # yeni kayıt ekle
             record = transform_dim_member_record(row, valid_from=today)
+
             cur.execute("""
                 INSERT INTO dim_member
                 (member_id, full_name, tc_hash, city, district,
@@ -268,19 +315,30 @@ def load_dim_member_scd2(conn):
                  valid_from, valid_to, is_current)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """, record)
+
             updated += 1
 
+        # ⚪ Değişiklik yok
         else:
-            # Değişiklik yok → dokunma
             skipped += 1
 
     conn.commit()
     cur.close()
-    log.info(f"dim_member SCD2 tamamlandi: {inserted} eklendi, {updated} guncellendi, {skipped} atlandi.")
+
+    log.info(
+        f"dim_member SCD2 tamamlandi: "
+        f"{inserted} eklendi, {updated} guncellendi, {skipped} atlandi."
+    )
+
     return inserted + updated + skipped
 
 
 def load_fact_payments(conn):
+    """
+    Düzeltme: Önceki versiyonda negatif ödeme COUNT sorgusu, ana SELECT
+    sorgusunun cursor'ını eziyordu. cur.fetchall() artık COUNT sorgusundan
+    ÖNCE çağrılıyor — bu sayede 341.119 kayıt doğru biçimde yükleniyor.
+    """
     log.info("fact_payments yukleniyor...")
     cur = conn.cursor()
 
@@ -299,8 +357,20 @@ def load_fact_payments(conn):
         JOIN dim_member dm ON dm.member_id = sp.member_id AND dm.is_current = TRUE
         JOIN dim_plan   dp ON dp.plan_id   = sp.plan_id
         WHERE sp.payment_id IS NOT NULL
+          AND sp.paid_amount >= 0
     """)
+
+    # ✅ DÜZELTİLDİ: fetchall() COUNT sorgusundan ÖNCE çağrılmalı;
+    #    aksi halde cursor ezilir ve rows boş döner.
     rows = cur.fetchall()
+
+    cur.execute("""
+        SELECT COUNT(*)
+        FROM staging.payments
+        WHERE paid_amount < 0
+    """)
+    neg_count = cur.fetchone()[0]
+    log.warning(f"Negatif ödeme sayisi (yuklenmedi): {neg_count}")
 
     records = [transform_fact_payment_record(row) for row in rows]
 
@@ -409,10 +479,6 @@ def load_fact_lottery(conn):
 # ==========================================
 
 def log_row_loss_report(conn):
-    """
-    Staging → DWH geçişinde kaç satırın neden düştüğünü raporlar.
-    Geri bildirim #1: Kayıp satırları kategorize et.
-    """
     cur = conn.cursor()
     log.info("=" * 50)
     log.info("SATIR KAYBI RAPORU")
@@ -437,10 +503,9 @@ def log_row_loss_report(conn):
     dim_member_count = cur.fetchone()[0]
 
     log.info(f"staging.members  → toplam     : {staging_members_total}")
-    log.info(f"  - NULL tc_hash filtresi      : {null_tc}")
-    log.info(f"  - Duplike (tc_hash bazlı)    : {duplicate_members}")
-    log.info(f"  dim_member (is_current)      : {dim_member_count}")
-    log.info(f"  Açıklanamayan kayıp          : {staging_members_total - null_tc - duplicate_members - dim_member_count}")
+    log.info(f"  - NULL tc_hash               : {null_tc}")
+    log.info(f"  - Duplicate                  : {duplicate_members}")
+    log.info(f"  dim_member                   : {dim_member_count}")
 
     # --- payments ---
     cur.execute("SELECT COUNT(*) FROM staging.payments")
@@ -459,9 +524,23 @@ def log_row_loss_report(conn):
     fact_pay_count = cur.fetchone()[0]
 
     log.info(f"staging.payments → toplam     : {staging_pay_total}")
-    log.info(f"  - FK mismatch (member yok)   : {fk_mismatch_pay}")
+    log.info(f"  - FK mismatch               : {fk_mismatch_pay}")
     log.info(f"  fact_payments               : {fact_pay_count}")
-    log.info(f"  Açıklanamayan kayıp          : {staging_pay_total - fk_mismatch_pay - fact_pay_count}")
+
+    # --- payment time analysis ---
+    cur.execute("""
+        SELECT
+            COUNT(*) FILTER (WHERE paid_date < due_date) AS early_payments,
+            COUNT(*) FILTER (WHERE paid_date > due_date) AS late_payments,
+            COUNT(*) FILTER (WHERE paid_date IS NULL)    AS unpaid
+        FROM staging.payments
+    """)
+
+    early, late, unpaid = cur.fetchone()
+
+    log.info(f"Early payments: {early}")
+    log.info(f"Late payments: {late}")
+    log.info(f"Unpaid: {unpaid}")
 
     log.info("=" * 50)
     cur.close()

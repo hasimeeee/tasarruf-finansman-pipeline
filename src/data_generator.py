@@ -107,7 +107,6 @@ def generate_members(num_members):
             weights=[15, 30, 25, 20, 10], k=1
         )[0] * random.uniform(0.8, 1.2), 2)
         signup_date    = fake.date_between(start_date=date(2022, 1, 1), end_date=date(2026, 4, 1))
-        # Düzeltme: sütun adı "status" değil "member_status" — staging.members ile uyumlu
         member_status  = random.choices(
             population=MEMBER_STATUSES,
             weights=[60, 20, 10, 10]
@@ -120,10 +119,10 @@ def generate_members(num_members):
             'tc_hash':       tc_hash,
             'city':          city,
             'district':      district,
-            'birth_date':    birth_date,    # DATE — staging.members ile uyumlu
+            'birth_date':    birth_date,
             'income':        income,
             'signup_date':   signup_date,
-            'member_status': member_status, # sütun adı standardize edildi
+            'member_status': member_status,
             'phone':         phone,
             'email':         email,
         })
@@ -152,7 +151,7 @@ def generate_plans():
 
 
 # ==========================================
-# 3. BRANCHES (Hafta 3-4 için eklendi)
+# 3. BRANCHES
 # ==========================================
 def generate_branches():
     """
@@ -195,7 +194,7 @@ def generate_payments(members, plans):
         amount_due = plan['monthly_installment']
         start_date = member['signup_date']
         duration   = plan['duration_months']
-        status     = member['member_status']   # düzeltildi: 'status' → 'member_status'
+        status     = member['member_status']
 
         active_months = random.randint(1, min(6, duration)) if status == 'terk' else duration
 
@@ -224,7 +223,7 @@ def generate_payments(members, plans):
             outcome = random.choices(list(w.keys()), weights=list(w.values()), k=1)[0]
 
             if outcome == 'odendi':
-                days_late    = random.randint(-5, 3)
+                days_late    = random.randint(0, 30)
                 payment_date = due_date + timedelta(days=days_late)
                 amount_paid  = amount_due
                 pay_status   = 'odendi'
@@ -313,11 +312,20 @@ def generate_lottery(members, plans):
 # 6. KİRLİ VERİ ENJEKSİYONU
 # ==========================================
 def inject_dirty_data(members, payments):
+    """
+    Kasıtlı kirli veri enjeksiyonu — data quality testleri için.
+
+    Not: duplicate üyeler member_id dahil bire bir kopyalanıyor.
+    Bu kasıtlı bir davranış; data_quality.py member_id bazında 450
+    duplicate bulurken ETL tc_hash bazında 415 tespit eder.
+    35 satırlık fark, aynı member_id'ye ama farklı tc_hash'e sahip
+    (yani gerçek anlamda farklı) duplicate gruplarından kaynaklanır.
+    """
     # %8 üyede tc_hash → None
     for m in random.sample(members, int(len(members) * 0.08)):
         m['tc_hash'] = None
 
-    # %3 üye duplike
+    # %3 üye duplike (member_id dahil tam kopya)
     dupes = random.sample(members, int(len(members) * 0.03))
     members.extend(dupes)
 
@@ -326,6 +334,9 @@ def inject_dirty_data(members, payments):
         p['paid_amount'] = round(random.uniform(-9999, -1), 2)
 
     # %0.3 ödemede tutarsız tarih (paid_date < due_date)
+    # NOT: Bu kayıtlar ETL'de 'Early payments' olarak raporlanır ve yüklenir.
+    # data_quality.py bunu FAIL olarak işaretler — iş kuralına göre WARN'a
+    # alınması değerlendirilebilir.
     for p in random.sample(payments, int(len(payments) * 0.003)):
         if p['paid_date'] is not None:
             p['paid_date'] = p['due_date'] - timedelta(days=random.randint(1, 10))

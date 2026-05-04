@@ -1652,3 +1652,200 @@ LINE 2: ...RT INTO dim_branch (branch_id, branch_name, city, region, op...
 2026-05-01 10:39:07,554 [INFO] ==================================================
 2026-05-01 10:39:07,554 [INFO] Pipeline tamamlandi. Toplam sure: 19.95 sn
 2026-05-01 10:39:07,554 [INFO] ==================================================
+2026-05-04 12:54:51,833 [INFO] ==================================================
+2026-05-04 12:54:51,834 [INFO] ETL Pipeline basliyor...
+2026-05-04 12:54:51,871 [INFO] dim_date yukleniyor...
+2026-05-04 12:54:51,879 [INFO] dim_date araligi: 2022-01-01 → 2026-05-31
+2026-05-04 12:54:51,969 [INFO] dim_date: 1612 gun yuklendi.
+2026-05-04 12:54:51,974 [INFO] [OK] dim_date: 1612 satir, 0.1 sn
+2026-05-04 12:54:51,974 [INFO] dim_plan yukleniyor...
+2026-05-04 12:54:51,979 [INFO] dim_plan: 0 plan yuklendi.
+2026-05-04 12:54:51,985 [INFO] [OK] dim_plan: 0 satir, 0.0 sn
+2026-05-04 12:54:51,986 [INFO] dim_branch yukleniyor...
+2026-05-04 12:54:51,998 [ERROR] [HATA] dim_branch: column "region" of relation "dim_branch" does not exist
+LINE 2: ...RT INTO dim_branch (branch_id, branch_name, city, region, op...
+                                                             ^
+
+2026-05-04 12:54:52,004 [INFO] dim_member SCD2 yukleniyor...
+2026-05-04 12:54:52,008 [INFO] Staging'den 0 kayit alindi.
+2026-05-04 12:54:52,031 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-05-04 12:54:52,033 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 0 atlandi.
+2026-05-04 12:54:52,040 [INFO] [OK] dim_member: 0 satir, 0.03 sn
+2026-05-04 12:54:52,041 [INFO] fact_payments yukleniyor...
+2026-05-04 12:54:52,046 [INFO] fact_payments: 0 kayit yuklendi.
+2026-05-04 12:54:52,052 [INFO] [OK] fact_payments: 0 satir, 0.01 sn
+2026-05-04 12:54:52,053 [INFO] fact_lottery yukleniyor...
+2026-05-04 12:54:52,078 [INFO] fact_lottery: 0 kayit yuklendi.
+2026-05-04 12:54:52,084 [INFO] [OK] fact_lottery: 0 satir, 0.03 sn
+2026-05-04 12:54:52,085 [INFO] ==================================================
+2026-05-04 12:54:52,085 [INFO] SATIR KAYBI RAPORU
+2026-05-04 12:54:52,098 [INFO] staging.members  → toplam     : 0
+2026-05-04 12:54:52,099 [INFO]   - NULL tc_hash filtresi      : 0
+2026-05-04 12:54:52,099 [INFO]   - Duplike (tc_hash bazlı)    : 0
+2026-05-04 12:54:52,099 [INFO]   dim_member (is_current)      : 15001
+2026-05-04 12:54:52,099 [INFO]   Açıklanamayan kayıp          : -15001
+2026-05-04 12:54:52,128 [INFO] staging.payments → toplam     : 0
+2026-05-04 12:54:52,128 [INFO]   - FK mismatch (member yok)   : 0
+2026-05-04 12:54:52,129 [INFO]   fact_payments               : 368229
+2026-05-04 12:54:52,129 [INFO]   Açıklanamayan kayıp          : -368229
+2026-05-04 12:54:52,129 [INFO] ==================================================
+2026-05-04 12:54:52,130 [INFO] Pipeline tamamlandi. Toplam sure: 0.3 sn
+2026-05-04 12:54:52,130 [INFO] ==================================================
+2026-05-04 12:59:05,174 [INFO] ==================================================
+2026-05-04 12:59:05,175 [INFO] ETL Pipeline basliyor...
+2026-05-04 12:59:05,211 [INFO] dim_date yukleniyor...
+2026-05-04 12:59:05,254 [INFO] dim_date araligi: 2022-01-01 → 2028-03-31
+2026-05-04 12:59:05,356 [INFO] dim_date: 2282 gun yuklendi.
+2026-05-04 12:59:05,361 [INFO] [OK] dim_date: 2282 satir, 0.15 sn
+2026-05-04 12:59:05,361 [INFO] dim_plan yukleniyor...
+2026-05-04 12:59:05,371 [INFO] dim_plan: 5 plan yuklendi.
+2026-05-04 12:59:05,376 [INFO] [OK] dim_plan: 5 satir, 0.01 sn
+2026-05-04 12:59:05,376 [INFO] dim_branch yukleniyor...
+2026-05-04 12:59:05,382 [ERROR] [HATA] dim_branch: column "region" of relation "dim_branch" does not exist
+LINE 2: ...RT INTO dim_branch (branch_id, branch_name, city, region, op...
+                                                             ^
+
+2026-05-04 12:59:05,388 [INFO] dim_member SCD2 yukleniyor...
+2026-05-04 12:59:05,493 [INFO] Staging'den 13800 kayit alindi.
+2026-05-04 12:59:05,512 [INFO] dim_member'dan 15001 aktif kayit alindi.
+2026-05-04 12:59:05,533 [INFO] dim_member SCD2 tamamlandi: 3 eklendi, 1 guncellendi, 13796 atlandi.
+2026-05-04 12:59:05,544 [INFO] [OK] dim_member: 13800 satir, 0.15 sn
+2026-05-04 12:59:05,545 [INFO] fact_payments yukleniyor...
+2026-05-04 12:59:21,453 [INFO] fact_payments: 371016 kayit yuklendi.
+2026-05-04 12:59:21,592 [INFO] [OK] fact_payments: 371016 satir, 16.04 sn
+2026-05-04 12:59:21,593 [INFO] fact_lottery yukleniyor...
+2026-05-04 12:59:22,975 [INFO] fact_lottery: 15004 kayit yuklendi.
+2026-05-04 12:59:22,993 [INFO] [OK] fact_lottery: 15004 satir, 1.4 sn
+2026-05-04 12:59:22,993 [INFO] ==================================================
+2026-05-04 12:59:22,994 [INFO] SATIR KAYBI RAPORU
+2026-05-04 12:59:23,016 [INFO] staging.members  → toplam     : 15450
+2026-05-04 12:59:23,017 [INFO]   - NULL tc_hash filtresi      : 1235
+2026-05-04 12:59:23,017 [INFO]   - Duplike (tc_hash bazlı)    : 415
+2026-05-04 12:59:23,017 [INFO]   dim_member (is_current)      : 15004
+2026-05-04 12:59:23,018 [INFO]   Açıklanamayan kayıp          : -1204
+2026-05-04 12:59:23,128 [INFO] staging.payments → toplam     : 371016
+2026-05-04 12:59:23,128 [INFO]   - FK mismatch (member yok)   : 0
+2026-05-04 12:59:23,128 [INFO]   fact_payments               : 371016
+2026-05-04 12:59:23,129 [INFO]   Açıklanamayan kayıp          : 0
+2026-05-04 12:59:23,129 [INFO] ==================================================
+2026-05-04 12:59:23,129 [INFO] Pipeline tamamlandi. Toplam sure: 17.95 sn
+2026-05-04 12:59:23,130 [INFO] ==================================================
+2026-05-04 14:08:26,902 [INFO] ==================================================
+2026-05-04 14:08:26,903 [INFO] ETL Pipeline basliyor...
+2026-05-04 14:08:26,933 [INFO] dim_date yukleniyor...
+2026-05-04 14:08:26,993 [INFO] dim_date araligi: 2022-01-01 → 2028-03-31
+2026-05-04 14:08:27,107 [INFO] dim_date: 2282 gun yuklendi.
+2026-05-04 14:08:27,112 [INFO] [OK] dim_date: 2282 satir, 0.17 sn
+2026-05-04 14:08:27,112 [INFO] dim_plan yukleniyor...
+2026-05-04 14:08:27,120 [INFO] dim_plan: 5 plan yuklendi.
+2026-05-04 14:08:27,124 [INFO] [OK] dim_plan: 5 satir, 0.01 sn
+2026-05-04 14:08:27,124 [INFO] dim_branch yukleniyor...
+2026-05-04 14:08:27,136 [ERROR] [HATA] dim_branch: column "open_date" of relation "dim_branch" does not exist
+LINE 2: ...dim_branch (branch_id, branch_name, city, region, open_date,...
+                                                             ^
+
+2026-05-04 14:08:27,140 [INFO] dim_member SCD2 yukleniyor...
+2026-05-04 14:08:27,254 [INFO] Staging'den 13800 kayit alindi.
+2026-05-04 14:08:27,258 [INFO] dim_member'dan 0 aktif kayit alindi.
+2026-05-04 14:08:43,531 [INFO] dim_member SCD2 tamamlandi: 13800 eklendi, 0 guncellendi, 0 atlandi.
+2026-05-04 14:08:43,544 [INFO] [OK] dim_member: 13800 satir, 16.4 sn
+2026-05-04 14:08:43,544 [INFO] fact_payments yukleniyor...
+2026-05-04 14:09:14,718 [INFO] fact_payments: 341119 kayit yuklendi.
+2026-05-04 14:09:14,996 [INFO] [OK] fact_payments: 341119 satir, 31.44 sn
+2026-05-04 14:09:14,997 [INFO] fact_lottery yukleniyor...
+2026-05-04 14:09:17,862 [INFO] fact_lottery: 13803 kayit yuklendi.
+2026-05-04 14:09:17,891 [INFO] [OK] fact_lottery: 13803 satir, 2.89 sn
+2026-05-04 14:09:17,892 [INFO] ==================================================
+2026-05-04 14:09:17,892 [INFO] SATIR KAYBI RAPORU
+2026-05-04 14:09:17,926 [INFO] staging.members  → toplam     : 15450
+2026-05-04 14:09:17,927 [INFO]   - NULL tc_hash filtresi      : 1235
+2026-05-04 14:09:17,927 [INFO]   - Duplike (tc_hash bazlı)    : 415
+2026-05-04 14:09:17,927 [INFO]   dim_member (is_current)      : 13800
+2026-05-04 14:09:17,928 [INFO]   Açıklanamayan kayıp          : 0
+2026-05-04 14:09:18,095 [INFO] staging.payments → toplam     : 371016
+2026-05-04 14:09:18,095 [INFO]   - FK mismatch (member yok)   : 29897
+2026-05-04 14:09:18,095 [INFO]   fact_payments               : 341119
+2026-05-04 14:09:18,096 [INFO]   Açıklanamayan kayıp          : 0
+2026-05-04 14:09:18,096 [INFO] ==================================================
+2026-05-04 14:09:18,097 [INFO] Pipeline tamamlandi. Toplam sure: 51.19 sn
+2026-05-04 14:09:18,097 [INFO] ==================================================
+2026-05-04 14:30:37,638 [INFO] ==================================================
+2026-05-04 14:30:37,638 [INFO] ETL Pipeline basliyor...
+2026-05-04 14:30:37,671 [INFO] dim_date yukleniyor...
+2026-05-04 14:30:37,720 [INFO] dim_date araligi: 2022-01-01 → 2028-03-31
+2026-05-04 14:30:37,812 [INFO] dim_date: 2282 gun yuklendi.
+2026-05-04 14:30:37,816 [INFO] [OK] dim_date: 2282 satir, 0.14 sn
+2026-05-04 14:30:37,817 [INFO] dim_plan yukleniyor...
+2026-05-04 14:30:37,822 [INFO] dim_plan: 5 plan yuklendi.
+2026-05-04 14:30:37,826 [INFO] [OK] dim_plan: 5 satir, 0.01 sn
+2026-05-04 14:30:37,826 [INFO] dim_branch yukleniyor...
+2026-05-04 14:30:37,833 [ERROR] [HATA] dim_branch: column "open_date" of relation "dim_branch" does not exist
+LINE 2: ...dim_branch (branch_id, branch_name, city, region, open_date,...
+                                                             ^
+
+2026-05-04 14:30:37,838 [INFO] dim_member SCD2 yukleniyor...
+2026-05-04 14:30:37,961 [INFO] Staging'den 13800 temiz kayıt alindi.
+2026-05-04 14:30:38,012 [INFO] dim_member'dan 13800 aktif kayit alindi.
+2026-05-04 14:30:38,020 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13800 atlandi.
+2026-05-04 14:30:38,033 [INFO] [OK] dim_member: 13800 satir, 0.19 sn
+2026-05-04 14:30:38,034 [INFO] fact_payments yukleniyor...
+2026-05-04 14:30:41,411 [INFO] Negatif ödeme sayisi: 1855
+2026-05-04 14:30:41,417 [INFO] fact_payments: 0 kayit yuklendi.
+2026-05-04 14:30:41,435 [INFO] [OK] fact_payments: 0 satir, 3.39 sn
+2026-05-04 14:30:41,436 [INFO] fact_lottery yukleniyor...
+2026-05-04 14:30:44,425 [INFO] fact_lottery: 13803 kayit yuklendi.
+2026-05-04 14:30:44,452 [INFO] [OK] fact_lottery: 13803 satir, 3.01 sn
+2026-05-04 14:30:44,452 [INFO] ==================================================
+2026-05-04 14:30:44,453 [INFO] SATIR KAYBI RAPORU
+2026-05-04 14:30:44,483 [INFO] staging.members  → toplam     : 15450
+2026-05-04 14:30:44,484 [INFO]   - NULL tc_hash               : 1235
+2026-05-04 14:30:44,484 [INFO]   - Duplicate                  : 415
+2026-05-04 14:30:44,485 [INFO]   dim_member                   : 13800
+2026-05-04 14:30:44,616 [INFO] staging.payments → toplam     : 371016
+2026-05-04 14:30:44,616 [INFO]   - FK mismatch               : 29897
+2026-05-04 14:30:44,617 [INFO]   fact_payments               : 341119
+2026-05-04 14:30:44,661 [INFO] Early payments: 953
+2026-05-04 14:30:44,661 [INFO] Late payments: 271170
+2026-05-04 14:30:44,662 [INFO] Unpaid: 49346
+2026-05-04 14:30:44,662 [INFO] ==================================================
+2026-05-04 14:30:44,663 [INFO] Pipeline tamamlandi. Toplam sure: 7.02 sn
+2026-05-04 14:30:44,664 [INFO] ==================================================
+2026-05-04 14:42:02,427 [INFO] ==================================================
+2026-05-04 14:42:02,427 [INFO] ETL Pipeline basliyor...
+2026-05-04 14:42:02,467 [INFO] dim_date yukleniyor...
+2026-05-04 14:42:02,522 [INFO] dim_date araligi: 2022-01-01 → 2028-03-31
+2026-05-04 14:42:02,633 [INFO] dim_date: 2282 gun yuklendi.
+2026-05-04 14:42:02,639 [INFO] [OK] dim_date: 2282 satir, 0.17 sn
+2026-05-04 14:42:02,639 [INFO] dim_plan yukleniyor...
+2026-05-04 14:42:02,649 [INFO] dim_plan: 5 plan yuklendi.
+2026-05-04 14:42:02,654 [INFO] [OK] dim_plan: 5 satir, 0.01 sn
+2026-05-04 14:42:02,654 [INFO] dim_branch yukleniyor...
+2026-05-04 14:42:02,664 [INFO] dim_branch: 1 eklendi, 1 guncellendi
+2026-05-04 14:42:02,670 [INFO] [OK] dim_branch: 2 satir, 0.01 sn
+2026-05-04 14:42:02,670 [INFO] dim_member SCD2 yukleniyor...
+2026-05-04 14:42:02,827 [INFO] Staging'den 13800 temiz kayıt alindi.
+2026-05-04 14:42:02,872 [INFO] dim_member'dan 13800 aktif kayit alindi.
+2026-05-04 14:42:02,951 [INFO] dim_member SCD2 tamamlandi: 0 eklendi, 0 guncellendi, 13800 atlandi.
+2026-05-04 14:42:02,966 [INFO] [OK] dim_member: 13800 satir, 0.29 sn
+2026-05-04 14:42:02,966 [INFO] fact_payments yukleniyor...
+2026-05-04 14:42:04,354 [INFO] Negatif ödeme sayisi: 1855
+2026-05-04 14:42:04,356 [INFO] fact_payments: 0 kayit yuklendi.
+2026-05-04 14:42:04,368 [INFO] [OK] fact_payments: 0 satir, 1.39 sn
+2026-05-04 14:42:04,368 [INFO] fact_lottery yukleniyor...
+2026-05-04 14:42:05,744 [INFO] fact_lottery: 13803 kayit yuklendi.
+2026-05-04 14:42:05,764 [INFO] [OK] fact_lottery: 13803 satir, 1.39 sn
+2026-05-04 14:42:05,764 [INFO] ==================================================
+2026-05-04 14:42:05,765 [INFO] SATIR KAYBI RAPORU
+2026-05-04 14:42:05,788 [INFO] staging.members  → toplam     : 15450
+2026-05-04 14:42:05,789 [INFO]   - NULL tc_hash               : 1235
+2026-05-04 14:42:05,789 [INFO]   - Duplicate                  : 415
+2026-05-04 14:42:05,789 [INFO]   dim_member                   : 13800
+2026-05-04 14:42:05,869 [INFO] staging.payments → toplam     : 371016
+2026-05-04 14:42:05,869 [INFO]   - FK mismatch               : 29897
+2026-05-04 14:42:05,870 [INFO]   fact_payments               : 341119
+2026-05-04 14:42:05,895 [INFO] Early payments: 953
+2026-05-04 14:42:05,895 [INFO] Late payments: 271170
+2026-05-04 14:42:05,896 [INFO] Unpaid: 49346
+2026-05-04 14:42:05,896 [INFO] ==================================================
+2026-05-04 14:42:05,896 [INFO] Pipeline tamamlandi. Toplam sure: 3.47 sn
+2026-05-04 14:42:05,897 [INFO] ==================================================
