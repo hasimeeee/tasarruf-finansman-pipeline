@@ -177,25 +177,18 @@ def transform_dim_plan_record(row: tuple) -> tuple:
     return (plan_id, plan_name, plan_type, duration_months, target_amount, monthly)
  
  
-def transform_dim_member_record(row: tuple, valid_from: date = None) -> tuple:
+def transform_dim_member_record(row: tuple, valid_from=None):
     """
-    staging.members satırını dim_member satırına dönüştürür.
- 
-    Giriş: (member_id, full_name, tc_hash, city, district,
-            birth_date, income, signup_date, member_status)
-    NOT: etl_pipeline.py sorgusu bu sırayla döndürüyor — değiştirme.
- 
-    valid_from parametresi:
-      - İlk kayıt (yeni üye) → signup_date
-      - Statü değişimi (SCD2 güncelleme) → today (değişimin olduğu gün)
-      Dışarıdan verilmezse signup_date kullanılır (geriye dönük uyumluluk).
- 
-    Döndürür: (member_id, full_name, tc_hash, city, district,
-               age_group, income_bracket, signup_date,
-               member_status, churn_date, valid_from, valid_to, is_current)
+    SCD2 transformer - schema resilient version
     """
+
+    if len(row) < 9:
+        raise ValueError(f"Invalid staging schema: {len(row)} columns")
+
     (member_id, full_name, tc_hash, city, district,
-     birth_date, income, signup_date, member_status) = row
+     birth_date, income, signup_date, member_status, *_) = row
+
+    # SCD logic continues...
  
     today  = date.today()
     ag     = get_age_group(birth_date)
