@@ -81,17 +81,17 @@ def get_db_connection():
 # ==========================================
 # PIPELINE RUN LOG
 # ==========================================
-def start_run(conn, pipeline_name: str) -> int:
-    """pipeline_runs tablosuna RUNNING kaydı açar, run_id döndürür."""
-    with conn.cursor() as cur:
-        cur.execute("""
-            INSERT INTO pipeline_runs (pipeline_name, status, run_at)
-            VALUES (%s, 'RUNNING', NOW())
-            RETURNING run_id
-        """, (pipeline_name,))
-        run_id = cur.fetchone()[0]
+def start_run(conn, pipeline_name):
+    pipeline_run_id = str(uuid.uuid4())
+
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO pipeline_runs (pipeline_run_id, stage, status, run_at)
+        VALUES (%s, %s, 'DQ_START', NOW())
+    """, (pipeline_run_id, pipeline_name))
+
     conn.commit()
-    return run_id
+    return pipeline_run_id
 
 
 def finish_run(conn, run_id: int, status: str):
@@ -663,15 +663,6 @@ def row_loss_report(cur, conn, run_id) -> dict:
 if __name__ == "__main__":
     conn = get_db_connection()
     cur  = conn.cursor()
-
-    send_alert(
-    failed_rules=[{
-        "rule": "TEST FAIL",
-        "table": "test_table",
-        "detail": "manuel test"
-    }],
-    warned_rules=[]
-)
 
     print("\n" + "=" * 55)
     print("DATA QUALITY CHECKS BAŞLIYOR")
