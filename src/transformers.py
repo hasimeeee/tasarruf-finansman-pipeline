@@ -157,8 +157,6 @@ def transform_dim_date_record(d: date) -> tuple:
         get_quarter(d.month),
         d.year,
         get_day_name(d),                # "Pazartesi" … "Pazar"
-        get_day_name(d),                # day_name — aynı değer, DDL'deki ayrı kolon
-        MONTH_NAMES_TR[d.month],        # "Ocak" … "Aralik"
         d.weekday() >= 5,
         is_holiday(d),
         is_ramadan(d),
@@ -186,7 +184,7 @@ def transform_dim_member_record(row: tuple, valid_from=None):
         raise ValueError(f"Invalid staging schema: {len(row)} columns")
 
     (member_id, full_name, tc_hash, city, district,
-     birth_date, income, signup_date, member_status, *_) = row
+     birth_date, income, signup_date, member_status, branch_sk, *_) = row
 
     # SCD logic continues...
  
@@ -201,7 +199,7 @@ def transform_dim_member_record(row: tuple, valid_from=None):
     return (
         member_id, full_name, tc_hash, city, district,
         ag, ib, signup_date, member_status, churn,
-        vf, None, True
+        vf, None, True, branch_sk
     )
  
  

@@ -25,6 +25,7 @@ Düzeltmeler:
 import os
 import sys
 import time
+import uuid
 from collections import defaultdict
 from datetime import date, timedelta
 
@@ -62,14 +63,13 @@ def get_conn():
     return psycopg2.connect(**DB)
 
 
-def log_pipeline_run(conn, stage: str, status: str, rows: int = 0,
-                     duration: float = 0.0, error: str = None):
-    """pipeline_runs tablosuna kayıt atar."""
+def log_pipeline_run(conn, pipeline_run_id, stage, status, rows=0, duration=0.0, error=None):
     cur = conn.cursor()
     cur.execute("""
-        INSERT INTO pipeline_runs (stage, status, rows_inserted, duration_sec, error_msg)
-        VALUES (%s, %s, %s, %s, %s)
-    """, (stage, status, rows, duration, error))
+        INSERT INTO pipeline_runs
+        (pipeline_run_id, pipeline_name, stage, status, rows_inserted, duration_sec, error_msg)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+    """, (pipeline_run_id, "etl_pipeline", stage, status, rows, duration, error))
     conn.commit()
 
 
@@ -119,7 +119,7 @@ def load_dim_date(conn):
     execute_values(cur, """
         INSERT INTO dim_date
         (date_key, full_date, day, month, quarter, year,
-         day_of_week, day_name, month_name, is_weekend, is_holiday, is_ramadan)
+         day_of_week, is_weekend, is_holiday, is_ramadan)
         VALUES %s
         ON CONFLICT (date_key) DO UPDATE SET
             is_holiday = EXCLUDED.is_holiday,
@@ -237,6 +237,7 @@ def load_dim_member_scd2(conn):
                 income,
                 signup_date,
                 member_status,
+                branch_sk,
                 ROW_NUMBER() OVER (
                     PARTITION BY tc_hash
                     ORDER BY signup_date DESC
@@ -272,7 +273,10 @@ def load_dim_member_scd2(conn):
             income,
             signup_date,
             new_status,
-            rn
+            branch_sk,
+            rn,
+            
+
         ) = row
 
         existing_status = existing_members.get(tc_hash)
@@ -286,8 +290,8 @@ def load_dim_member_scd2(conn):
                 (member_id, full_name, tc_hash, city, district,
                  age_group, income_bracket, signup_date,
                  member_status, churn_date,
-                 valid_from, valid_to, is_current)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                 valid_from, valid_to, is_current, branch_sk)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """, record)
 
             inserted += 1
@@ -312,8 +316,8 @@ def load_dim_member_scd2(conn):
                 (member_id, full_name, tc_hash, city, district,
                  age_group, income_bracket, signup_date,
                  member_status, churn_date,
-                 valid_from, valid_to, is_current)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                 valid_from, valid_to, is_current, branch_sk)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """, record)
 
             updated += 1
@@ -555,6 +559,10 @@ def run_pipeline():
     log.info("ETL Pipeline basliyor...")
     t0 = time.time()
 
+    # Her pipeline çalışması için benzersiz ID — tüm stage logları bu ID ile gruplanır
+    pipeline_run_id = str(uuid.uuid4())
+    log.info(f"Pipeline run ID: {pipeline_run_id}")
+
     conn = get_conn()
 
     # UPSERT stratejisi: DELETE/TRUNCATE yok.
@@ -574,12 +582,12 @@ def run_pipeline():
         try:
             rows = fn(conn)
             dur  = round(time.time() - t1, 2)
-            log_pipeline_run(conn, stage, "success", rows, dur)
+            log_pipeline_run(conn, pipeline_run_id, stage, "success", rows, dur)
             log.info(f"[OK] {stage}: {rows} satir, {dur} sn")
         except Exception as e:
             conn.rollback()
             log.error(f"[HATA] {stage}: {e}")
-            log_pipeline_run(conn, stage, "failed", error=str(e))
+            log_pipeline_run(conn, pipeline_run_id, stage, "failed", error=str(e))
 
     # Satır kaybı raporu
     try:

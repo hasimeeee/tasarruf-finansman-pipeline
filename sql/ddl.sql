@@ -13,25 +13,28 @@
 
 CREATE TABLE IF NOT EXISTS pipeline_runs (
     run_id          SERIAL PRIMARY KEY,
+    pipeline_run_id UUID,                           -- her çalışmaya ait benzersiz ID (etl_pipeline.py)
     pipeline_name   VARCHAR(100),                   -- hangi pipeline: etl / data_quality
     stage           VARCHAR(50),                    -- ETL için adım adı (dim_date vs.)
     status          VARCHAR(20),                    -- RUNNING / SUCCESS / FAILED / WARNING
     rows_inserted   INTEGER,
+    rows_rejected   INTEGER,                        -- gelecekte kullanım için
     run_at          TIMESTAMP DEFAULT NOW(),        -- başlangıç
     finished_at     TIMESTAMP,                      -- bitiş (finish_run ile doldurulur)
     duration_sec    NUMERIC(10, 2),
-    error_msg       TEXT
+    error_msg       TEXT,
+    notes           TEXT                            -- ek bilgi alanı
 );
 
 -- Her quality check kuralının sonucunu saklar
 CREATE TABLE IF NOT EXISTS quality_check_results (
-    result_id       SERIAL PRIMARY KEY,
+    check_id        SERIAL PRIMARY KEY,             -- canlı DB ile uyumlu (eskiden result_id)
     run_id          INTEGER REFERENCES pipeline_runs(run_id),
     check_name      VARCHAR(200),
     table_name      VARCHAR(100),
     status          VARCHAR(10),                    -- PASS / WARN / FAIL
-    metric_value    INTEGER,                        -- sorunlu satır sayısı
-    threshold       INTEGER DEFAULT 0,
+    metric_value    NUMERIC,                        -- canlı DB: numeric
+    threshold       NUMERIC DEFAULT 0,
     detail          TEXT,
     checked_at      TIMESTAMP DEFAULT NOW()
 );
@@ -70,6 +73,7 @@ CREATE TABLE IF NOT EXISTS dim_member (
     churn_date      DATE,
     valid_from      DATE NOT NULL DEFAULT CURRENT_DATE,
     valid_to        DATE,
+    branch_sk       INTEGER REFERENCES dim_branch(branch_sk),
     is_current      BOOLEAN DEFAULT TRUE
 );
 
@@ -84,7 +88,7 @@ CREATE TABLE IF NOT EXISTS dim_plan (
 );
 
 CREATE TABLE IF NOT EXISTS dim_branch (
-    branch_key  SERIAL PRIMARY KEY,
+    branch_sk   SERIAL PRIMARY KEY,                -- canlı DB ile uyumlu (eskiden branch_key)
     branch_id   VARCHAR(20) NOT NULL,
     branch_name VARCHAR(100),
     city        VARCHAR(50),

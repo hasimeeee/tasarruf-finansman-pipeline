@@ -85,19 +85,46 @@ def get_db_connection():
         db["dbname"] = db.pop("name")
     return psycopg2.connect(**db)
 
+# ==========================================
+#  BRANCHES
+# ==========================================
+def generate_branches():
+    branches = []
+    toplam_sube = 50
+    branch_counter = 1
+
+    for city, weight in CITIES.items():
+        sube_sayisi = round(toplam_sube * weight / 100)
+        for i in range(sube_sayisi):
+            # 1 şube ekle
+            region = CITY_REGIONS.get(city, 'Diger')
+            open_date = fake.date_between(start_date=date(2010, 1, 1), end_date=date(2021, 12, 31))
+            branches.append({
+               'branch_sk':   branch_counter,
+               'branch_id':   f'B{branch_counter:03d}',
+               'branch_name': f'{city} Subesi {i+1}',
+               'city':        city,
+               'region':      region,
+               'open_date':   open_date,
+            })
+            branch_counter += 1
+    return branches
 
 # ==========================================
-# 1. MEMBERS
+#  MEMBERS
 # ==========================================
-def generate_members(num_members):
+def generate_members(num_members, branches):
     members = []
     for i in range(num_members):
         tc_no   = str(random.randint(10000000000, 99999999999))
         tc_hash = hashlib.sha256(tc_no.encode()).hexdigest()
-        city    = random.choices(
-            population=list(CITIES.keys()),
-            weights=list(CITIES.values()), k=1
+        city = random.choices(
+           population=list(CITIES.keys()),
+           weights=list(CITIES.values()), k=1
         )[0]
+        sehir_subeleri = [b for b in branches if b['city'] == city]
+        secilen_sube = random.choice(sehir_subeleri)
+        
         district   = fake.city()
         birth_date = fake.date_of_birth(minimum_age=18, maximum_age=65)  # DATE tipinde
         phone      = fake.phone_number()
@@ -125,6 +152,7 @@ def generate_members(num_members):
             'member_status': member_status,
             'phone':         phone,
             'email':         email,
+            'branch_sk':     secilen_sube['branch_sk'],
         })
 
     logger.info(f'{num_members} üye üretildi.')
@@ -132,7 +160,7 @@ def generate_members(num_members):
 
 
 # ==========================================
-# 2. PLANS
+#  PLANS
 # ==========================================
 def generate_plans():
     plan_configs = [
@@ -150,31 +178,9 @@ def generate_plans():
     return plans
 
 
-# ==========================================
-# 3. BRANCHES
-# ==========================================
-def generate_branches():
-    """
-    Her şehir için 1 şube üretir.
-    ddl.sql → dim_branch ve staging.branches ile uyumlu.
-    """
-    branches = []
-    for i, (city, _) in enumerate(CITIES.items(), start=1):
-        region = CITY_REGIONS.get(city, 'Diger')
-        open_date = fake.date_between(start_date=date(2010, 1, 1), end_date=date(2021, 12, 31))
-        branches.append({
-            'branch_id':   f'B{i:03d}',
-            'branch_name': f'{city} Subesi',
-            'city':        city,
-            'region':      region,
-            'open_date':   open_date,
-        })
-    logger.info(f'{len(branches)} şube üretildi.')
-    return branches
-
 
 # ==========================================
-# 4. PAYMENTS
+#  PAYMENTS
 # ==========================================
 def generate_payments(members, plans):
     payments = []
@@ -259,7 +265,7 @@ def generate_payments(members, plans):
 
 
 # ==========================================
-# 5. LOTTERY
+#  LOTTERY
 # ==========================================
 def generate_lottery(members, plans):
     lottery = []
@@ -309,7 +315,7 @@ def generate_lottery(members, plans):
 
 
 # ==========================================
-# 6. KİRLİ VERİ ENJEKSİYONU
+#  KİRLİ VERİ ENJEKSİYONU
 # ==========================================
 def inject_dirty_data(members, payments):
     """
@@ -345,7 +351,7 @@ def inject_dirty_data(members, payments):
 
 
 # ==========================================
-# 7. STAGING'E YAZ
+#  STAGING'E YAZ
 # ==========================================
 def save_to_staging(conn, members, plans, payments, lottery, branches):
     cur = conn.cursor()
@@ -364,11 +370,11 @@ def save_to_staging(conn, members, plans, payments, lottery, branches):
         """INSERT INTO staging.members
            (member_id, full_name, tc_hash, city, district,
             birth_date, income, signup_date, member_status,
-            phone, email)
+            phone, email, branch_sk)
            VALUES %s""",
         [(m['member_id'], m['full_name'], m['tc_hash'], m['city'], m['district'],
           m['birth_date'], m['income'], m['signup_date'], m['member_status'],
-          m['phone'], m['email'])
+          m['phone'], m['email'], m['branch_sk'])
          for m in members]
     )
     logger.info(f'  -> {len(members)} satır eklendi.')
@@ -413,9 +419,9 @@ def save_to_staging(conn, members, plans, payments, lottery, branches):
     logger.info('staging.branches yazılıyor...')
     execute_values(cur,
         """INSERT INTO staging.branches
-           (branch_id, branch_name, city, region, open_date)
+           (branch_sk, branch_id, branch_name, city, region, open_date)
            VALUES %s""",
-        [(b['branch_id'], b['branch_name'], b['city'], b['region'], b['open_date'])
+        [(b['branch_sk'], b['branch_id'], b['branch_name'], b['city'], b['region'], b['open_date'])
          for b in branches]
     )
     logger.info(f'  -> {len(branches)} satır eklendi.')
@@ -432,10 +438,9 @@ if __name__ == '__main__':
     logger.info('=== Veri Üretimi Başlıyor ===')
 
     num_members = config.get('data_generation', {}).get('num_members', 15000)
-
-    members  = generate_members(num_members)
-    plans    = generate_plans()
     branches = generate_branches()
+    members  = generate_members(num_members, branches)
+    plans    = generate_plans()
     payments = generate_payments(members, plans)
     lottery  = generate_lottery(members, plans)
 

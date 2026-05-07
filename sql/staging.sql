@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS staging.members (
     signup_date     DATE,
     member_status   VARCHAR(20),            -- aktif / gecikmeli / pasif / terk
     phone           VARCHAR(30),            -- eklendi
-    email           VARCHAR(100),           -- eklendi
+    email           VARCHAR(100), 
+    branch_sk       INTEGER,            -- eklendi
     loaded_at       TIMESTAMP DEFAULT NOW()
 );
 
@@ -62,6 +63,7 @@ CREATE TABLE IF NOT EXISTS staging.lottery (
 
 CREATE TABLE IF NOT EXISTS staging.branches (
     id          SERIAL PRIMARY KEY,
+    branch_sk   INTEGER,  
     branch_id   VARCHAR(20) UNIQUE,
     branch_name VARCHAR(100),
     city        VARCHAR(50),

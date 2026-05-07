@@ -82,16 +82,15 @@ def get_db_connection():
 # PIPELINE RUN LOG
 # ==========================================
 def start_run(conn, pipeline_name):
-    pipeline_run_id = str(uuid.uuid4())
-
     cur = conn.cursor()
     cur.execute("""
-        INSERT INTO pipeline_runs (pipeline_run_id, stage, status, run_at)
-        VALUES (%s, %s, 'DQ_START', NOW())
-    """, (pipeline_run_id, pipeline_name))
-
+        INSERT INTO pipeline_runs (pipeline_name, stage, status, run_at)
+        VALUES (%s, 'DQ_START', 'RUNNING', NOW())
+        RETURNING run_id
+    """, (pipeline_name,))
+    run_id = cur.fetchone()[0]
     conn.commit()
-    return pipeline_run_id
+    return run_id  # integer — finish_run ve log_check_result ile uyumlu
 
 
 def finish_run(conn, run_id: int, status: str):
@@ -706,5 +705,3 @@ if __name__ == "__main__":
 
     cur.close()
     conn.close()
-
-    
