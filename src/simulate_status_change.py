@@ -8,7 +8,7 @@ import os
 
 sys.path.append(os.path.dirname(__file__))
 from etl_pipeline import get_conn, load_dim_member_scd2
-from utils.logger import get_logger
+from logger import get_logger          # utils/ klasörü yok — logger.py kök dizinde
 
 log = get_logger("simulasyon")
 

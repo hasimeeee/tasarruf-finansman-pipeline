@@ -37,14 +37,14 @@ def section(title):
 # ==========================================
 def profile_members(cursor):
     section("ÜYE PROFİLİ")
-    total = run_query(cursor, "SELECT COUNT(*) FROM staging_members")[0][0]
+    total = run_query(cursor, "SELECT COUNT(*) FROM staging.members")[0][0]
     print(f"Toplam üye: {total:,}")
 
     section("Statü Dağılımı")
     for row in run_query(cursor, """
-        SELECT status, COUNT(*) AS adet
-        FROM staging_members
-        GROUP BY status
+        SELECT member_status AS status, COUNT(*) AS adet
+        FROM staging.members
+        GROUP BY member_status
         ORDER BY adet DESC
     """):
         print(f"  {row[0]:<12}: {row[1]:>6,}")
@@ -52,7 +52,7 @@ def profile_members(cursor):
     section("Şehir Dağılımı (Top 10)")
     for row in run_query(cursor, """
         SELECT city, COUNT(*) AS adet
-        FROM staging_members
+        FROM staging.members
         GROUP BY city
         ORDER BY adet DESC
         LIMIT 10
@@ -66,7 +66,7 @@ def profile_members(cursor):
             ROUND(MAX(income), 2),
             ROUND(AVG(income), 2),
             ROUND(STDDEV(income), 2)
-        FROM staging_members
+        FROM staging.members
     """)[0]
     print(f"  Min : {float(row[0]):>12,.2f} TL")
     print(f"  Max : {float(row[1]):>12,.2f} TL")
@@ -74,10 +74,10 @@ def profile_members(cursor):
     print(f"  Std : {float(row[3]):>12,.2f} TL")
 
     section("NULL / Kirli Veri")
-    null_tc = run_query(cursor, "SELECT COUNT(*) FROM staging_members WHERE tc_hash IS NULL")[0][0]
+    null_tc = run_query(cursor, "SELECT COUNT(*) FROM staging.members WHERE tc_hash IS NULL")[0][0]
     dupes   = run_query(cursor, """
         SELECT COUNT(*) FROM (
-            SELECT tc_hash FROM staging_members
+            SELECT tc_hash FROM staging.members
             WHERE tc_hash IS NOT NULL
             GROUP BY tc_hash HAVING COUNT(*) > 1
         ) t
@@ -94,7 +94,7 @@ def profile_plans(cursor):
     plans = run_query(cursor, """
         SELECT plan_id, plan_name, duration_months,
                target_amount, monthly_installment
-        FROM staging_plans
+        FROM staging.plans
         ORDER BY plan_id
     """)
     print(f"  {'ID':<6} {'Plan Adı':<28} {'Süre':>5} {'Hedef':>12} {'Taksit':>12}")
@@ -108,14 +108,14 @@ def profile_plans(cursor):
 # ==========================================
 def profile_payments(cursor):
     section("ÖDEME PROFİLİ")
-    total = run_query(cursor, "SELECT COUNT(*) FROM staging_payments")[0][0]
+    total = run_query(cursor, "SELECT COUNT(*) FROM staging.payments")[0][0]
     print(f"  Toplam ödeme kaydı: {total:,}")
 
     section("Ödeme Durumu Dağılımı")
     for row in run_query(cursor, """
         SELECT payment_status, COUNT(*) AS adet,
                ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) AS yuzde
-        FROM staging_payments
+        FROM staging.payments
         GROUP BY payment_status
         ORDER BY adet DESC
     """):
@@ -127,7 +127,7 @@ def profile_payments(cursor):
             ROUND(AVG((paid_date - due_date)), 1)  AS ort_gecikme,
             MAX((paid_date - due_date))             AS max_gecikme,
             COUNT(*) FILTER (WHERE paid_date > due_date) AS gecikme_adedi
-        FROM staging_payments
+        FROM staging.payments
         WHERE paid_date IS NOT NULL
     """)[0]
     print(f"  Ortalama gecikme : {row[0]:>6} gün")
@@ -135,7 +135,7 @@ def profile_payments(cursor):
     print(f"  Gecikme adedi    : {row[2]:>6,}")
 
     section("Kirli Veri Özeti")
-    neg = run_query(cursor, "SELECT COUNT(*) FROM staging_payments WHERE paid_amount < 0")[0][0]
+    neg = run_query(cursor, "SELECT COUNT(*) FROM staging.payments WHERE paid_amount < 0")[0][0]
     print(f"  Negatif tutar    : {neg:>6,}")
 
 
@@ -151,7 +151,7 @@ def profile_lottery(cursor):
             ROUND(
                 SUM(CASE WHEN is_winner THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2
             ) AS kazanma_orani
-        FROM staging_lottery
+        FROM staging.lottery
     """)[0]
     print(f"  Toplam kayıt  : {row[0]:>6,}")
     print(f"  Kazanan       : {row[1]:>6,}")
@@ -162,8 +162,8 @@ def profile_lottery(cursor):
         SELECT p.plan_name,
                COUNT(*) AS toplam_kura,
                SUM(CASE WHEN l.is_winner THEN 1 ELSE 0 END) AS kazanan
-        FROM staging_lottery l
-        JOIN staging_plans p ON l.plan_id = p.plan_id
+        FROM staging.lottery l
+        JOIN staging.plans p ON l.plan_id = p.plan_id
         GROUP BY p.plan_name
         ORDER BY toplam_kura DESC
     """):
@@ -172,7 +172,7 @@ def profile_lottery(cursor):
     section("Aylık Kura Katılım Trendi (Top 10)")
     for row in run_query(cursor, """
         SELECT TO_CHAR(lottery_date, 'YYYY-MM') AS ay, COUNT(*) AS katilim
-        FROM staging_lottery
+        FROM staging.lottery
         GROUP BY ay
         ORDER BY katilim DESC
         LIMIT 10
@@ -203,11 +203,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-     
-
-
-       
-
-
-      

@@ -229,8 +229,11 @@ def generate_payments(members, plans):
             outcome = random.choices(list(w.keys()), weights=list(w.values()), k=1)[0]
 
             if outcome == 'odendi':
-                days_late    = random.randint(0, 30)
-                payment_date = due_date + timedelta(days=days_late)
+                # 'odendi' → gecikme yok: days_late=0, paid_date=due_date
+                # Önceki versiyonda randint(0,30) kullanılıyordu; bu paid_date'i
+                # due_date'ten ileriye taşıyarak 'gecikmeli' görünüme yol açıyordu.
+                days_late    = 0
+                payment_date = due_date
                 amount_paid  = amount_due
                 pay_status   = 'odendi'
             elif outcome == 'gecikmeli':
