@@ -3,8 +3,12 @@
 -- ==========================================
 -- Hafta 4 değişiklikleri:
 --   - pipeline_runs: pipeline_name, finished_at sütunları eklendi
---     (data_quality.py start_run/finish_run ile uyumlu hale getirildi)
---   - quality_check_results tablosu eklendi (her kural sonucu saklanıyor)
+--   - quality_check_results tablosu eklendi
+-- Senkronizasyon düzeltmeleri (canlı DB ile uyumlu):
+--   - pipeline_runs: pipeline_run_id UUID, rows_rejected, notes eklendi
+--   - quality_check_results: PK result_id → check_id, metric_value INTEGER → NUMERIC
+--   - dim_branch: PK branch_key → branch_sk
+--   - dim_date: day_name ve month_name kaldırıldı (day_of_week yeterli)
 -- ==========================================
 
 -- ==========================================
@@ -50,9 +54,7 @@ CREATE TABLE IF NOT EXISTS dim_date (
     month           SMALLINT,
     quarter         SMALLINT,
     year            SMALLINT,
-    day_of_week     VARCHAR(15),
-    day_name        VARCHAR(15),
-    month_name      VARCHAR(15),
+    day_of_week     VARCHAR(15),                    -- Türkçe gün adı: Pazartesi … Pazar
     is_weekend      BOOLEAN DEFAULT FALSE,
     is_holiday      BOOLEAN DEFAULT FALSE,
     is_ramadan      BOOLEAN DEFAULT FALSE

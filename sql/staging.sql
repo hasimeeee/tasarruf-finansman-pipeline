@@ -4,20 +4,22 @@ CREATE SCHEMA IF NOT EXISTS staging;
 -- ==========================================
 
 -- Staging: Üyeler
+-- DÜZELTİLDİ: member_id sütununa UNIQUE constraint eklendi.
+-- Testlerde ON CONFLICT (member_id) DO NOTHING kullanabilmek için gerekli.
 CREATE TABLE IF NOT EXISTS staging.members (
     id              SERIAL PRIMARY KEY,
-    member_id       VARCHAR(20) UNIQUE,
+    member_id       VARCHAR(20) UNIQUE,          -- ← UNIQUE eklendi
     full_name       VARCHAR(100),
-    tc_hash         VARCHAR(64),            -- NULL olabilir (kirli veri senaryosu)
+    tc_hash         VARCHAR(64),
     city            VARCHAR(50),
     district        VARCHAR(50),
-    birth_date      DATE,                   -- DATE tipinde (eskiden birth_year INT idi)
+    birth_date      DATE,
     income          NUMERIC(12, 2),
     signup_date     DATE,
-    member_status   VARCHAR(20),            -- aktif / gecikmeli / pasif / terk
-    phone           VARCHAR(30),            -- eklendi
-    email           VARCHAR(100), 
-    branch_sk       INTEGER,            -- eklendi
+    member_status   VARCHAR(20),
+    phone           VARCHAR(30),
+    email           VARCHAR(100),
+    branch_sk       INTEGER,
     loaded_at       TIMESTAMP DEFAULT NOW()
 );
 
@@ -26,7 +28,7 @@ CREATE TABLE IF NOT EXISTS staging.plans (
     id                  SERIAL PRIMARY KEY,
     plan_id             VARCHAR(20),
     plan_name           VARCHAR(100),
-    plan_type           VARCHAR(20),        -- konut / arsa / ticari / arac / isyeri
+    plan_type           VARCHAR(20),
     duration_months     INTEGER,
     target_amount       NUMERIC(15, 2),
     monthly_installment NUMERIC(12, 2),
@@ -42,10 +44,10 @@ CREATE TABLE IF NOT EXISTS staging.payments (
     plan_id         VARCHAR(20),
     installment_no  INTEGER,
     due_date        DATE,
-    paid_date       DATE,                   -- NULL ise ödenmedi
+    paid_date       DATE,
     due_amount      NUMERIC(12, 2),
     paid_amount     NUMERIC(12, 2),
-    payment_status  VARCHAR(20),            -- odendi / gecikmeli / kismi / odenmedi
+    payment_status  VARCHAR(20),
     loaded_at       TIMESTAMP DEFAULT NOW()
 );
 
@@ -63,7 +65,7 @@ CREATE TABLE IF NOT EXISTS staging.lottery (
 
 CREATE TABLE IF NOT EXISTS staging.branches (
     id          SERIAL PRIMARY KEY,
-    branch_sk   INTEGER,  
+    branch_sk   INTEGER,
     branch_id   VARCHAR(20) UNIQUE,
     branch_name VARCHAR(100),
     city        VARCHAR(50),
@@ -71,3 +73,6 @@ CREATE TABLE IF NOT EXISTS staging.branches (
     open_date   DATE,
     loaded_at   TIMESTAMP DEFAULT NOW()
 );
+
+-- Mevcut veritabanında UNIQUE constraint eksikse ekle:
+-- ALTER TABLE staging.members ADD CONSTRAINT members_member_id_unique UNIQUE (member_id);
