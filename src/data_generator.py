@@ -44,6 +44,16 @@ CITY_REGIONS = {
 
 MEMBER_STATUSES = ['aktif', 'gecikmeli', 'pasif', 'terk']
 
+# Statu gecis zincirleri - SCD2 history simülasyonu icin
+# %10 oran: tam zincir yasayan uyeler uretilir (aktif -> gecikmeli -> pasif -> terk)
+STATUS_CHAINS = [
+    ['aktif', 'gecikmeli', 'pasif', 'terk'],  # tam zincir
+    ['aktif', 'gecikmeli', 'terk'],            # kisa zincir
+    ['aktif', 'gecikmeli'],                    # kismen
+    ['aktif'],                                 # degerismez
+]
+STATUS_CHAIN_WEIGHTS = [10, 20, 30, 40]
+
 FIXED_HOLIDAYS = [
     (1, 1), (4, 23), (5, 1), (5, 19),
     (7, 15), (8, 30), (10, 29),
@@ -157,6 +167,29 @@ def generate_members(num_members, branches):
 
     logger.info(f'{num_members} üye üretildi.')
     return members
+
+
+# ==========================================
+#  UYE GECIS GECMISI (SCD2 Simülasyonu)
+# ==========================================
+def generate_member_history(members, num_history=150):
+    """
+    num_history kadar uye icin tam statu gecis zinciri uretir.
+    Ornek: aktif -> gecikmeli -> pasif -> terk
+    Her gecis adimi ayri bir staging kaydı olarak donmez;
+    bunlar test_scd2.py'deki zincirleme SCD2 testinde
+    dogrudan staging'e yazilir.
+
+    Donus: her uyeye kac gecis uygulanacagini gosteren liste:
+    [{'member_id': ..., 'chain': ['aktif','gecikmeli','pasif','terk']}, ...]
+    """
+    history_members = random.sample(members, min(num_history, len(members)))
+    result = []
+    for m in history_members:
+        chain = random.choices(STATUS_CHAINS, weights=STATUS_CHAIN_WEIGHTS, k=1)[0]
+        result.append({'member_id': m['member_id'], 'chain': chain})
+    logger.info(f'{len(result)} uye icin statu gecis zinciri uretildi.')
+    return result
 
 
 # ==========================================

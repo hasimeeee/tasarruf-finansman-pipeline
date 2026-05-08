@@ -15,7 +15,7 @@ from datetime import date
 
 from etl_pipeline import get_conn, load_dim_member_scd2, run_pipeline
 
-TEST_MEMBER_IDS = ('TEST001', 'TEST002', 'TEST003', 'TEST004')
+TEST_MEMBER_IDS = ('TEST001', 'TEST002', 'TEST003', 'TEST004', 'TEST005')
 # NOT: psycopg2'de "WHERE x IN %s" tuple doğru çalışır (tek elemanlıda da).
 # Tek eleman için tuple sonuna virgül gerekli: ('X',) — burada 4 eleman var, sorun yok.
 
@@ -173,3 +173,55 @@ def test_pipeline_run_log_tablosuna_yazma(conn):
     new_conn.close()
 
     assert len(failed_stages) == 0, f"Başarısız stage'ler: {failed_stages}"
+
+# ==========================================
+# TEST 6 — Tam statu gecis zinciri: aktif -> gecikmeli -> pasif -> terk
+# ==========================================
+def test_statu_gecis_zinciri(conn):
+    """
+    SCD2 history testi: aktif -> gecikmeli -> pasif -> terk
+    Her geciste:
+      - Eski kayit kapanmali (is_current=FALSE, valid_to dolu)
+      - Yeni kayit acilmali (is_current=TRUE)
+    Sonucta dim_member'da 4 satir olmali (her statu icin birer tarihsel kayit).
+    """
+    cur = conn.cursor()
+    chain = ['aktif', 'gecikmeli', 'pasif', 'terk']
+
+    # Ilk kaydi aktifte olustur
+    _insert_member(cur, conn,
+        'TEST005', 'Zincir Kisi', 'zincir005hash', 'Istanbul', 'Sisli',
+        '1988-06-15', 65000, '2022-01-01', 'aktif',
+        '05005005005', 'zincir@test.com')
+    load_dim_member_scd2(conn)
+
+    # Zincirin geri kalanini adim adim uygula
+    for statu in chain[1:]:
+        cur.execute(
+            "UPDATE staging.members SET member_status = %s WHERE member_id = 'TEST005'",
+            (statu,)
+        )
+        conn.commit()
+        load_dim_member_scd2(conn)
+
+    # Toplam 4 kayit olmali (her statu icin bir SCD2 satiri)
+    cur.execute("SELECT COUNT(*) FROM dim_member WHERE member_id = 'TEST005'")
+    assert cur.fetchone()[0] == 4, "Zincirde 4 SCD2 kaydı olusmaladı!"
+
+    # Sadece 1 aktif kayit olmali (terk)
+    cur.execute("""
+        SELECT member_status FROM dim_member
+        WHERE member_id = 'TEST005' AND is_current = TRUE
+    """)
+    row = cur.fetchone()
+    assert row is not None, "Aktif kayit bulunamadı!"
+    assert row[0] == 'terk', f"Son statu 'terk' olmali, {row[0]} bulundu!"
+
+    # Tum gecmis kayitlar kapali olmali
+    cur.execute("""
+        SELECT COUNT(*) FROM dim_member
+        WHERE member_id = 'TEST005'
+          AND is_current = FALSE
+          AND valid_to IS NOT NULL
+    """)
+    assert cur.fetchone()[0] == 3, "Gecmis 3 kayit kapali olmali (valid_to dolu)!"
