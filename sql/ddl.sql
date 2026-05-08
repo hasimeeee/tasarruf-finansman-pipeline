@@ -60,6 +60,18 @@ CREATE TABLE IF NOT EXISTS dim_date (
     is_ramadan      BOOLEAN DEFAULT FALSE
 );
 
+CREATE TABLE IF NOT EXISTS dim_branch (
+    branch_sk   SERIAL PRIMARY KEY,                -- canlı DB ile uyumlu (eskiden branch_key)
+    branch_id   VARCHAR(20) NOT NULL,
+    branch_name VARCHAR(100),
+    city        VARCHAR(50),
+    region      VARCHAR(50),
+    open_date   DATE,
+    valid_from  DATE NOT NULL DEFAULT CURRENT_DATE,
+    valid_to    DATE,
+    is_current  BOOLEAN DEFAULT TRUE
+);
+
 CREATE TABLE IF NOT EXISTS dim_member (
     member_key      SERIAL PRIMARY KEY,
     member_id       VARCHAR(20) NOT NULL,
@@ -87,18 +99,6 @@ CREATE TABLE IF NOT EXISTS dim_plan (
     duration_months     INTEGER,
     target_amount       NUMERIC(15, 2),
     monthly_installment NUMERIC(12, 2)
-);
-
-CREATE TABLE IF NOT EXISTS dim_branch (
-    branch_sk   SERIAL PRIMARY KEY,                -- canlı DB ile uyumlu (eskiden branch_key)
-    branch_id   VARCHAR(20) NOT NULL,
-    branch_name VARCHAR(100),
-    city        VARCHAR(50),
-    region      VARCHAR(50),
-    open_date   DATE,
-    valid_from  DATE NOT NULL DEFAULT CURRENT_DATE,
-    valid_to    DATE,
-    is_current  BOOLEAN DEFAULT TRUE
 );
 
 -- ==========================================
