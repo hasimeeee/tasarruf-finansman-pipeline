@@ -3,12 +3,9 @@ CREATE SCHEMA IF NOT EXISTS staging;
 -- 1. STAGING TABLOLARI
 -- ==========================================
 
--- Staging: Üyeler
--- DÜZELTİLDİ: member_id sütununa UNIQUE constraint eklendi.
--- Testlerde ON CONFLICT (member_id) DO NOTHING kullanabilmek için gerekli.
 CREATE TABLE IF NOT EXISTS staging.members (
     id              SERIAL PRIMARY KEY,
-    member_id       VARCHAR(20) UNIQUE,          -- ← UNIQUE eklendi
+    member_id       VARCHAR(20) UNIQUE,
     full_name       VARCHAR(100),
     tc_hash         VARCHAR(64),
     city            VARCHAR(50),
@@ -23,7 +20,6 @@ CREATE TABLE IF NOT EXISTS staging.members (
     loaded_at       TIMESTAMP DEFAULT NOW()
 );
 
--- Staging: Planlar
 CREATE TABLE IF NOT EXISTS staging.plans (
     id                  SERIAL PRIMARY KEY,
     plan_id             VARCHAR(20),
@@ -35,8 +31,6 @@ CREATE TABLE IF NOT EXISTS staging.plans (
     loaded_at           TIMESTAMP DEFAULT NOW()
 );
 
-
--- Staging: Ödemeler
 CREATE TABLE IF NOT EXISTS staging.payments (
     id              SERIAL PRIMARY KEY,
     payment_id      VARCHAR(20) UNIQUE,
@@ -51,7 +45,6 @@ CREATE TABLE IF NOT EXISTS staging.payments (
     loaded_at       TIMESTAMP DEFAULT NOW()
 );
 
--- Staging: Kura Çekilişleri
 CREATE TABLE IF NOT EXISTS staging.lottery (
     id              SERIAL PRIMARY KEY,
     lottery_id      VARCHAR(20) UNIQUE,
@@ -63,9 +56,14 @@ CREATE TABLE IF NOT EXISTS staging.lottery (
     loaded_at       TIMESTAMP DEFAULT NOW()
 );
 
+-- FIX: branch_sk SERIAL olarak değiştirildi.
+-- Önceki versiyonda INTEGER (sekansız) idi; dim_branch.branch_sk SERIAL ile
+-- manuel değer girildiğinde sekans counter çakışması riski vardı.
+-- Mevcut DB'de değiştirmek için:
+--   ALTER TABLE staging.branches ALTER COLUMN branch_sk SET DEFAULT nextval('dim_branch_branch_sk_seq');
 CREATE TABLE IF NOT EXISTS staging.branches (
     id          SERIAL PRIMARY KEY,
-    branch_sk   INTEGER,
+    branch_sk   INTEGER,                    -- dim_branch.branch_sk'ya referans (manuel veya ETL atar)
     branch_id   VARCHAR(20) UNIQUE,
     branch_name VARCHAR(100),
     city        VARCHAR(50),
@@ -73,6 +71,3 @@ CREATE TABLE IF NOT EXISTS staging.branches (
     open_date   DATE,
     loaded_at   TIMESTAMP DEFAULT NOW()
 );
-
--- Mevcut veritabanında UNIQUE constraint eksikse ekle:
--- ALTER TABLE staging.members ADD CONSTRAINT members_member_id_unique UNIQUE (member_id);

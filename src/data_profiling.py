@@ -1,6 +1,7 @@
-import psycopg2
-import yaml
 import logging
+from config_loader import load_config   # FIX: config_loader kullan — .env desteği geldi
+
+import psycopg2
 
 logging.basicConfig(
     level=logging.INFO,
@@ -9,12 +10,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def load_config():
-    with open("config.yaml", "r") as f:
-        return yaml.safe_load(f)
-
-
 def get_connection():
+    # FIX: Artık config_loader üzerinden bağlanıyor; DB_PASSWORD .env'den okunuyor
     config = load_config()["database"].copy()
     if "name" in config:
         config["dbname"] = config.pop("name")
@@ -185,9 +182,11 @@ def profile_lottery(cursor):
 # ==========================================
 def main():
     logger.info("Profiling başlıyor...")
-    conn   = get_connection()
-    cursor = conn.cursor()
+    conn   = None
+    cursor = None
     try:
+        conn   = get_connection()
+        cursor = conn.cursor()
         profile_members(cursor)
         profile_plans(cursor)
         profile_payments(cursor)
@@ -197,8 +196,11 @@ def main():
         logger.error(f"Hata: {e}")
         raise
     finally:
-        cursor.close()
-        conn.close()
+        # FIX: connection leak — hata olsa da cursor ve conn kapatılıyor
+        if cursor is not None:
+            cursor.close()
+        if conn is not None:
+            conn.close()
 
 
 if __name__ == '__main__':

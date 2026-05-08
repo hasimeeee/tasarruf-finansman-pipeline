@@ -155,6 +155,25 @@ def send_alert(failed_rules: list, warned_rules: list):
         logger.info("SMTP yapılandırması bulunamadı — e-posta gönderilmedi.")
         return
 
+    # .env'den credential'ları oku (config.yaml'daki boş değerleri override eder)
+    smtp_host     = smtp_cfg.get("host") or os.environ.get("SMTP_HOST", "")
+    smtp_port     = int(smtp_cfg.get("port") or os.environ.get("SMTP_PORT", 587))
+    smtp_user     = smtp_cfg.get("user") or os.environ.get("SMTP_USER", "")
+    smtp_password = smtp_cfg.get("password") or os.environ.get("SMTP_PASS", "")
+    smtp_to       = smtp_cfg.get("to") or os.environ.get("SMTP_TO", "")
+
+    # Zorunlu alanlar eksikse sadece log yaz, exception fırlatma
+    missing = [k for k, v in {
+        "host": smtp_host, "user": smtp_user,
+        "password": smtp_password, "to": smtp_to
+    }.items() if not v]
+    if missing:
+        logger.warning(
+            f"SMTP e-postası gönderilemedi — eksik credential: {missing}. "
+            f".env dosyasında SMTP_USER, SMTP_PASS, SMTP_TO tanımlayın."
+        )
+        return
+
     try:
         subject = f"[DATA QUALITY ALERT] {fail_count} FAIL — Tasarruf Finansman Pipeline"
 
@@ -173,18 +192,18 @@ def send_alert(failed_rules: list, warned_rules: list):
                 lines.append(f"  ⚠ [{r['table']}] {r['rule']} — {r['detail']}")
 
         msg = MIMEMultipart()
-        msg["From"]    = smtp_cfg["user"]
-        msg["To"]      = smtp_cfg["to"]
+        msg["From"]    = smtp_user
+        msg["To"]      = smtp_to
         msg["Subject"] = subject
         msg.attach(MIMEText("\n".join(lines), "plain", "utf-8"))
 
-        with smtplib.SMTP(smtp_cfg["host"], smtp_cfg.get("port", 587)) as server:
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
             server.ehlo()
             server.starttls()
-            server.login(smtp_cfg["user"], smtp_cfg["password"])
-            server.sendmail(smtp_cfg["user"], smtp_cfg["to"], msg.as_string())
+            server.login(smtp_user, smtp_password)
+            server.sendmail(smtp_user, smtp_to, msg.as_string())
 
-        logger.info(f"Alert e-postası gönderildi → {smtp_cfg['to']}")
+        logger.info(f"Alert e-postası gönderildi → {smtp_to}")
 
     except Exception as e:
         logger.error(f"E-posta gönderilemedi: {e}")

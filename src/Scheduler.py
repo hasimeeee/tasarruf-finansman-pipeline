@@ -1,5 +1,3 @@
-import os
-import sys
 """
 Tasarruf Finansman - ETL Pipeline Scheduler
 Her gece 02:00'da otomatik çalışır (APScheduler).
@@ -8,12 +6,12 @@ Kurulum:
     pip install apscheduler
 
 Çalıştırma:
-    python scheduler.py
+    python Scheduler.py
 """
 
+import os
+import sys
 
-
-# etl_pipeline.py ile aynı dizinde olduğu varsayılıyor
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from apscheduler.schedulers.blocking import BlockingScheduler
@@ -27,11 +25,20 @@ except ImportError:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     log = logging.getLogger("scheduler")
 
-from etl_pipeline import run_pipeline
+# FIX: run_pipeline import'u lazy (fonksiyon içine) taşındı.
+# Modül seviyesinde import edildiğinde psycopg2, config.yaml veya .env
+# eksikse scheduler başlamadan çöküyordu. Şimdi sadece job tetiklendiğinde
+# import edilir; başlangıç hatası job listener'a düşer, scheduler ayakta kalır.
+def run_pipeline_safe():
+    try:
+        from etl_pipeline import run_pipeline
+        run_pipeline()
+    except Exception as e:
+        log.error(f"Pipeline çalıştırılamadı: {e}")
+        raise
 
 
 def job_listener(event):
-    """Job tamamlandığında veya hata olduğunda logla."""
     if event.exception:
         log.error(f"Pipeline JOB HATASI: {event.exception}")
     else:
@@ -41,17 +48,16 @@ def job_listener(event):
 def main():
     scheduler = BlockingScheduler(timezone="Europe/Istanbul")
 
-    # Her gece 02:00'da çalış
     scheduler.add_job(
-    func=run_pipeline,
-    trigger="cron",
-    hour=2,
-    minute=0,
-    id="etl_pipeline_daily",
-    name="Tasarruf Finansman ETL Pipeline",
-    max_instances=1,
-    misfire_grace_time=3600,
-)
+        func=run_pipeline_safe,
+        trigger="cron",
+        hour=2,
+        minute=0,
+        id="etl_pipeline_daily",
+        name="Tasarruf Finansman ETL Pipeline",
+        max_instances=1,
+        misfire_grace_time=3600,
+    )
     scheduler.add_listener(job_listener, EVENT_JOB_EXECUTED | EVENT_JOB_ERROR)
 
     log.info("Scheduler başlatıldı — her gece 02:00 (Europe/Istanbul) pipeline çalışacak.")

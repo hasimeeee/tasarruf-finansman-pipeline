@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS dim_member (
     income_bracket  VARCHAR(20),
     signup_date     DATE,
     member_status   VARCHAR(20),
-    member_segment  VARCHAR(30),
+    member_segment  VARCHAR(30),                    -- PLACEHOLDER: Faz 1'de NULL. Hafta 7'de K-Means kümeleme ile doldurulacak (bkz. README)
     churn_date      DATE,
     valid_from      DATE NOT NULL DEFAULT CURRENT_DATE,
     valid_to        DATE,

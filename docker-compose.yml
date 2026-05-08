@@ -1,5 +1,13 @@
 version: '3.8'
 
+# FIX: Şifreler artık düz metin değil — .env dosyasından okunuyor.
+# Proje kökünde bir .env dosyası oluştur (asla commit'leme):
+#
+#   POSTGRES_PASSWORD=gercek_sifreniz
+#   DB_PASSWORD=gercek_sifreniz
+#
+# .env dosyasının .gitignore'da olduğunu kontrol et!
+
 services:
   postgres:
     image: postgres:15
@@ -8,7 +16,7 @@ services:
     environment:
       POSTGRES_DB: tasarruf_finansman
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 2491
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}   # FIX: .env'den oku
 
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
@@ -43,7 +51,7 @@ services:
       DB_PORT: 5432
       DB_NAME: tasarruf_finansman
       DB_USER: postgres
-      DB_PASSWORD: 2491
+      DB_PASSWORD: ${DB_PASSWORD}               # FIX: .env'den oku
 
     command: sh -c "mkdir -p /app/logs && touch /app/logs/cron.log && cron && tail -f /app/logs/cron.log"
 

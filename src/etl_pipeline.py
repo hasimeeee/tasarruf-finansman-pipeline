@@ -293,10 +293,10 @@ def load_dim_member_scd2(conn):
                 INSERT INTO dim_member
                 (member_id, full_name, tc_hash, city, district,
                  age_group, income_bracket, signup_date,
-                 member_status, churn_date,
+                 member_status, member_segment, churn_date,
                  valid_from, valid_to, is_current, branch_sk)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-            """, record[:13] + (branch_sk,))
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """, record[:14] + (branch_sk,))
 
             inserted += 1
 
@@ -316,10 +316,10 @@ def load_dim_member_scd2(conn):
                 INSERT INTO dim_member
                 (member_id, full_name, tc_hash, city, district,
                  age_group, income_bracket, signup_date,
-                 member_status, churn_date,
+                 member_status, member_segment, churn_date,
                  valid_from, valid_to, is_current, branch_sk)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-            """, record[:13] + (branch_sk,))
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """, record[:14] + (branch_sk,))
 
             updated += 1
 
