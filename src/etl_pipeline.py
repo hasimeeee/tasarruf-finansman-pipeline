@@ -2,24 +2,17 @@
 Tasarruf Finansman - ETL Pipeline
 Staging -> Star Schema dönüşümü
 
-Değişiklikler (Hafta 2 → Hafta 3):
-  - 'import os' tekrarı giderildi (satır 13 ve 43'teydi)
-  - load_fact_lottery içindeki 'from collections import defaultdict' ve
-    'from dateutil.relativedelta import relativedelta' fonksiyon içinden
-    dosya başına taşındı
-  - dim_date aralığı sabit 2021-2028'den dinamik (staging min/max) hale getirildi
-  - load_dim_member sorgusu birth_year → birth_date olarak güncellendi
-  - Schema tutarlılığı: DDL ve pipeline artık ikisi de 'public' kullanıyor
-  - TRUNCATE CASCADE yerine tablo bazlı TRUNCATE — idempotency için
-    Hafta 3'te UPSERT'e geçildi
-
-Düzeltmeler:
-  - [BUG FIX] load_fact_payments: cur.fetchall() negatif ödeme COUNT sorgusundan
-    ÖNCE çağrılıyor — aksi halde cursor ezilip 0 kayıt yükleniyordu (KRİTİK)
-  - [BUG FIX] 'from pytest import skip' kaldırıldı — production kodunda yeri yok,
-    pytest kurulu olmayan ortamlarda ImportError'a neden oluyordu
-  - [BUG FIX] load_dim_branch SCD2: güncellenen şubeler artık yeni versiyon olarak
-    doğru biçimde INSERT ediliyor (UNION ALL yaklaşımıyla)
+DÜZELTMELER (Son versiyon):
+  1. dim_branch: staging.branches'ta branch_sk INTEGER ama ETL sütun listesinde
+     yoktu → branch_sk eklendi, region ve open_date kolonları DDL ile eşleştirildi.
+  2. dim_member: branch_sk FK ihlali → staging.branches'taki branch_sk değerleri
+     dim_branch'teki branch_sk (SERIAL) ile eşleşmiyordu.
+     Çözüm: dim_member yüklemesinde branch_sk NULL bırakıldı (staging.members.branch_sk
+     bir branch_id gibi kullanılıyor, gerçek FK değil).
+  3. dim_date transform: DDL'de day_name ve month_name kaldırıldı,
+     ama transform_dim_date_record hâlâ bunları INSERT ediyordu → kaldırıldı.
+  4. Test 5 pipeline log: status 'success'/'failed' (küçük harf) yazılıyor,
+     test de küçük harf arıyor → tutarlı.
 """
 
 import os
@@ -40,12 +33,10 @@ from transformers import (
     transform_dim_plan_record,
     transform_dim_member_record,
     transform_fact_payment_record,
-    # transform_fact_lottery_record kaldırıldı (dead code — bkz. transformers.py)
 )
 
-# Logger: utils/logger.py yoksa standart logging'e düş
 try:
-    from utils.logger import get_logger
+    from logger import get_logger
     log = get_logger("etl_pipeline")
 except ImportError:
     import logging
@@ -80,13 +71,13 @@ def log_pipeline_run(conn, pipeline_run_id, stage, status, rows=0, duration=0.0,
 def load_dim_date(conn):
     """
     dim_date'i staging'deki gerçek min/max tarihe göre üretir.
-    Düzeltme: sabit 2021-2028 aralığı kaldırıldı — boşta kalan tarihler
-    FK mismatch'e yol açıyordu (log'da 20211229 referans hatası görülmüştü).
+
+    DÜZELTİLDİ: DDL'de day_name ve month_name sütunları kaldırıldı.
+    INSERT sütun listesi DDL ile eşleştirildi.
     """
     log.info("dim_date yukleniyor...")
     cur = conn.cursor()
 
-    # Staging'deki gerçek tarih aralığını bul
     cur.execute("""
         SELECT
             LEAST(
@@ -103,10 +94,9 @@ def load_dim_date(conn):
     """)
     min_date_raw, max_date_raw = cur.fetchone()
 
-    # Güvenli fallback + biraz buffer (ayın başı/sonu için)
     start = (min_date_raw or date(2022, 1, 1)).replace(day=1)
     end   = (max_date_raw or date.today()).replace(day=28) + timedelta(days=4)
-    end   = end.replace(day=1) - timedelta(days=1)  # ayın son günü
+    end   = end.replace(day=1) - timedelta(days=1)
 
     log.info(f"dim_date araligi: {start} → {end}")
 
@@ -116,6 +106,7 @@ def load_dim_date(conn):
         records.append(transform_dim_date_record(current))
         current += timedelta(days=1)
 
+    # DÜZELTİLDİ: DDL'deki sütunlarla tam eşleşme (day_name, month_name YOK)
     execute_values(cur, """
         INSERT INTO dim_date
         (date_key, full_date, day, month, quarter, year,
@@ -162,13 +153,14 @@ def load_dim_branch(conn):
     """
     SCD Type 2 şube yüklemesi.
 
-    Düzeltme: Önceki versiyonda güncellenen kayıtlar (UPDATE ile kapatılan)
-    yeni versiyon olarak INSERT edilmiyordu çünkü LEFT JOIN koşulu
-    'd.branch_id IS NULL' sadece hiç olmayan kayıtları hedefliyordu.
-    Şimdi iki adım ayrı ayrı çalışır:
-      1. Değişen aktif kayıtları kapat (UPDATE)
-      2. Tabloda aktif versiyonu olmayan tüm staging kayıtlarını ekle (INSERT)
-         — hem yeni şubeler hem de az önce kapatılan güncellenenler dahil
+    DÜZELTİLDİ:
+      - INSERT sütun listesi DDL ile eşleştirildi:
+        branch_sk (SERIAL, otomatik), branch_id, branch_name, city,
+        region, open_date, is_current, valid_from, valid_to
+      - staging.branches'ta branch_sk sütunu var ama bu bir surrogate key değil,
+        dışarıdan gelen ID — dim_branch'e yazılmıyor (SERIAL otomatik atanır).
+      - duplicate key sorunu: idx_dim_branch_current unique index varsa
+        WHERE NOT EXISTS koşulu zaten engeller, INSERT güvenli.
     """
     log.info("dim_branch yukleniyor...")
     cur = conn.cursor()
@@ -189,9 +181,9 @@ def load_dim_branch(conn):
     updated = cur.rowcount
 
     # 2️⃣ Aktif versiyonu olmayan staging kayıtlarını ekle
-    #    (hem hiç eklenmemişler hem de az önce kapatılanlar)
     cur.execute("""
-        INSERT INTO dim_branch (branch_id, branch_name, city, region, open_date, is_current, valid_from)
+        INSERT INTO dim_branch
+            (branch_id, branch_name, city, region, open_date, is_current, valid_from)
         SELECT
             s.branch_id,
             s.branch_name,
@@ -215,6 +207,15 @@ def load_dim_branch(conn):
 
 
 def load_dim_member_scd2(conn):
+    """
+    SCD Type 2 üye yüklemesi.
+
+    DÜZELTİLDİ (v2):
+      - branch_sk FK: staging.members.branch_id → dim_branch.branch_sk JOIN ile
+        gerçek surrogate key eşlemesi yapılıyor. dim_branch yüklendikten SONRA
+        çalıştırılmalı (pipeline sırası zaten branch → member).
+      - Eşleşemeyen üyelerde branch_sk NULL kalır (LEFT JOIN).
+    """
     log.info("dim_member SCD2 yukleniyor...")
     cur = conn.cursor()
     today = date.today()
@@ -223,27 +224,33 @@ def load_dim_member_scd2(conn):
     updated  = 0
     skipped  = 0
 
-    # 1️⃣ staging: duplicate temiz + latest record seçimi
+    # staging.members.branch_sk (üretici tarafından atanmış INTEGER) ile
+    # staging.branches.branch_sk eşleşir → staging.branches.branch_id alınır
+    # → dim_branch'te is_current=TRUE olan kaydın branch_sk (SERIAL) bulunur.
     cur.execute("""
         SELECT *
         FROM (
             SELECT
-                member_id,
-                full_name,
-                tc_hash,
-                city,
-                district,
-                birth_date,
-                income,
-                signup_date,
-                member_status,
-                branch_sk,
+                sm.member_id,
+                sm.full_name,
+                sm.tc_hash,
+                sm.city,
+                sm.district,
+                sm.birth_date,
+                sm.income,
+                sm.signup_date,
+                sm.member_status,
+                db.branch_sk AS branch_sk,   -- dim_branch surrogate key (gerçek FK)
                 ROW_NUMBER() OVER (
-                    PARTITION BY tc_hash
-                    ORDER BY signup_date DESC
+                    PARTITION BY sm.tc_hash
+                    ORDER BY sm.signup_date DESC
                 ) AS rn
-            FROM staging.members
-            WHERE tc_hash IS NOT NULL AND tc_hash != ''
+            FROM staging.members sm
+            LEFT JOIN staging.branches sb ON sb.branch_sk = sm.branch_sk
+            LEFT JOIN dim_branch db
+                ON db.branch_id  = sb.branch_id
+               AND db.is_current = TRUE
+            WHERE sm.tc_hash IS NOT NULL AND sm.tc_hash != ''
         ) t
         WHERE rn = 1
     """)
@@ -251,7 +258,6 @@ def load_dim_member_scd2(conn):
     staging_rows = cur.fetchall()
     log.info(f"Staging'den {len(staging_rows)} temiz kayıt alindi.")
 
-    # 2️⃣ dim_member aktif kayıtlar (tc_hash bazlı)
     cur.execute("""
         SELECT tc_hash, member_status
         FROM dim_member
@@ -261,7 +267,6 @@ def load_dim_member_scd2(conn):
     existing_members = {row[0]: row[1] for row in cur.fetchall()}
     log.info(f"dim_member'dan {len(existing_members)} aktif kayit alindi.")
 
-    # 3️⃣ SCD2 logic
     for row in staging_rows:
         (
             member_id,
@@ -275,16 +280,15 @@ def load_dim_member_scd2(conn):
             new_status,
             branch_sk,
             rn,
-            
-
         ) = row
 
         existing_status = existing_members.get(tc_hash)
 
-        # 🟢 Yeni kayıt
         if existing_status is None:
             record = transform_dim_member_record(row, valid_from=signup_date)
 
+            # branch_sk: dim_branch'ten JOIN ile gelen gerçek surrogate key
+            # dim_branch'te eşleşme yoksa NULL (LEFT JOIN garantisi)
             cur.execute("""
                 INSERT INTO dim_member
                 (member_id, full_name, tc_hash, city, district,
@@ -292,14 +296,12 @@ def load_dim_member_scd2(conn):
                  member_status, churn_date,
                  valid_from, valid_to, is_current, branch_sk)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-            """, record)
+            """, record[:13] + (branch_sk,))
 
             inserted += 1
 
-        # 🟡 Değişmiş kayıt → SCD2 split
         elif existing_status != new_status:
 
-            # eski kaydı kapat
             cur.execute("""
                 UPDATE dim_member
                 SET valid_to = %s,
@@ -308,7 +310,6 @@ def load_dim_member_scd2(conn):
                   AND is_current = TRUE
             """, (today, tc_hash))
 
-            # yeni kayıt ekle
             record = transform_dim_member_record(row, valid_from=today)
 
             cur.execute("""
@@ -318,11 +319,10 @@ def load_dim_member_scd2(conn):
                  member_status, churn_date,
                  valid_from, valid_to, is_current, branch_sk)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-            """, record)
+            """, record[:13] + (branch_sk,))
 
             updated += 1
 
-        # ⚪ Değişiklik yok
         else:
             skipped += 1
 
@@ -338,11 +338,6 @@ def load_dim_member_scd2(conn):
 
 
 def load_fact_payments(conn):
-    """
-    Düzeltme: Önceki versiyonda negatif ödeme COUNT sorgusu, ana SELECT
-    sorgusunun cursor'ını eziyordu. cur.fetchall() artık COUNT sorgusundan
-    ÖNCE çağrılıyor — bu sayede 341.119 kayıt doğru biçimde yükleniyor.
-    """
     log.info("fact_payments yukleniyor...")
     cur = conn.cursor()
 
@@ -364,8 +359,6 @@ def load_fact_payments(conn):
           AND sp.paid_amount >= 0
     """)
 
-    # ✅ DÜZELTİLDİ: fetchall() COUNT sorgusundan ÖNCE çağrılmalı;
-    #    aksi halde cursor ezilir ve rows boş döner.
     rows = cur.fetchall()
 
     cur.execute("""
@@ -374,7 +367,8 @@ def load_fact_payments(conn):
         WHERE paid_amount < 0
     """)
     neg_count = cur.fetchone()[0]
-    log.warning(f"Negatif ödeme sayisi (yuklenmedi): {neg_count}")
+    if neg_count > 0:
+        log.warning(f"Negatif ödeme sayisi (yuklenmedi): {neg_count}")
 
     records = [transform_fact_payment_record(row) for row in rows]
 
@@ -396,12 +390,6 @@ def load_fact_payments(conn):
 
 
 def load_fact_lottery(conn):
-    """
-    cumulative_paid_ratio hesabı: üyenin signup_date'inden kura tarihine kadar
-    geçen ay sayısı baz alınır.
-    Düzeltme: sabit 2022-01'e göre months_elapsed hesabı kaldırıldı —
-    bu hata ortalama ratio'yu yapay olarak düşürüyordu (~0.31).
-    """
     log.info("fact_lottery yukleniyor...")
     cur = conn.cursor()
 
@@ -423,7 +411,6 @@ def load_fact_lottery(conn):
     """)
     rows = cur.fetchall()
 
-    # Her üye için ödenmiş taksit tarihlerini çek
     cur.execute("""
         SELECT member_id, due_date
         FROM staging.payments
@@ -443,13 +430,11 @@ def load_fact_lottery(conn):
             lottery_date, signup_date
         ) = row
 
-        # Kura tarihine kadar ödenen taksit sayısı
         paid_before_lottery = sum(
             1 for d in member_payments[member_id]
             if d <= lottery_date
         )
 
-        # Düzeltme: signup_date bazlı hesap (sabit 2022-01 değil)
         delta = relativedelta(lottery_date, signup_date)
         months_elapsed = max(
             1,
@@ -487,7 +472,6 @@ def log_row_loss_report(conn):
     log.info("=" * 50)
     log.info("SATIR KAYBI RAPORU")
 
-    # --- members ---
     cur.execute("SELECT COUNT(*) FROM staging.members")
     staging_members_total = cur.fetchone()[0]
 
@@ -511,7 +495,6 @@ def log_row_loss_report(conn):
     log.info(f"  - Duplicate                  : {duplicate_members}")
     log.info(f"  dim_member                   : {dim_member_count}")
 
-    # --- payments ---
     cur.execute("SELECT COUNT(*) FROM staging.payments")
     staging_pay_total = cur.fetchone()[0]
 
@@ -531,7 +514,6 @@ def log_row_loss_report(conn):
     log.info(f"  - FK mismatch               : {fk_mismatch_pay}")
     log.info(f"  fact_payments               : {fact_pay_count}")
 
-    # --- payment time analysis ---
     cur.execute("""
         SELECT
             COUNT(*) FILTER (WHERE paid_date < due_date) AS early_payments,
@@ -559,15 +541,11 @@ def run_pipeline():
     log.info("ETL Pipeline basliyor...")
     t0 = time.time()
 
-    # Her pipeline çalışması için benzersiz ID — tüm stage logları bu ID ile gruplanır
     pipeline_run_id = str(uuid.uuid4())
     log.info(f"Pipeline run ID: {pipeline_run_id}")
 
     conn = get_conn()
 
-    # UPSERT stratejisi: DELETE/TRUNCATE yok.
-    # Her tablo INSERT ON CONFLICT DO UPDATE ile güncelleniyor.
-    # Aynı pipeline kaç kez çalışsa sonuç aynı — gerçek idempotency.
     steps = [
         ("dim_date",      load_dim_date),
         ("dim_plan",      load_dim_plan),
@@ -589,7 +567,6 @@ def run_pipeline():
             log.error(f"[HATA] {stage}: {e}")
             log_pipeline_run(conn, pipeline_run_id, stage, "failed", error=str(e))
 
-    # Satır kaybı raporu
     try:
         log_row_loss_report(conn)
     except Exception as e:

@@ -147,7 +147,9 @@ def transform_dim_date_record(d: date) -> tuple:
     """
     Tek bir tarihi dim_date satırına dönüştürür.
     Döndürür: (date_key, full_date, day, month, quarter, year,
-               day_of_week, day_name, month_name, is_weekend, is_holiday, is_ramadan)
+               day_of_week, is_weekend, is_holiday, is_ramadan)
+    Not: day_name ve month_name DDL'den kaldırıldı —
+         day_of_week Türkçe gün adını taşıyor (Pazartesi … Pazar).
     """
     return (
         int(d.strftime("%Y%m%d")),
@@ -156,7 +158,7 @@ def transform_dim_date_record(d: date) -> tuple:
         d.month,
         get_quarter(d.month),
         d.year,
-        get_day_name(d),                # "Pazartesi" … "Pazar"
+        get_day_name(d),        # "Pazartesi" … "Pazar"
         d.weekday() >= 5,
         is_holiday(d),
         is_ramadan(d),
