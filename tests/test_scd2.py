@@ -1,3 +1,17 @@
+"""
+test_scd2.py — Düzeltilmiş versiyon
+
+Düzeltilen hatalar:
+  1. branch_sk: 'BRANCH001' string → NULL (INTEGER sütun, test fixture'da gerçek SK yok)
+  2. ON CONFLICT (member_id): staging.members'da member_id UNIQUE constraint yok.
+     INSERT ... ON CONFLICT yerine önce DELETE + INSERT yapısına geçildi.
+  3. Teardown InFailedSqlTransaction: test patladığında connection aborted state'de
+     kalıyor. _cleanup artık başında connection.rollback() çağırıyor.
+  4. Test 5 (pipeline log): status sütununda ETL 'failed' yazıyor,
+     sorgu da 'failed' arıyor — bu doğru. Ama ETL'deki asıl hatalar
+     (dim_branch / dim_date / dim_member) ayrıca düzeltildi (bkz. etl_pipeline.py fix).
+"""
+
 import pytest
 import sys
 import os
@@ -8,8 +22,15 @@ from etl_pipeline import get_conn, load_dim_member_scd2, run_pipeline
 
 TEST_MEMBER_IDS = ('TEST001', 'TEST002', 'TEST003', 'TEST004')
 
+
 def _cleanup(connection):
-    """Test verilerini staging ve dim_member'dan siler."""
+    """
+    Test verilerini staging ve dim_member'dan siler.
+
+    DÜZELTİLDİ: Eğer test başarısız olduysa connection aborted state'de
+    kalır. rollback() yapılmadan _cleanup çalıştırılamaz.
+    """
+    connection.rollback()          # ← aborted transaction'ı temizle
     cur = connection.cursor()
     cur.execute("""
         DELETE FROM dim_member
@@ -31,24 +52,41 @@ def conn():
     connection.close()
 
 
+def _insert_member(cur, conn, member_id, full_name, tc_hash, city, district,
+                   birth_date, income, signup_date, member_status,
+                   phone, email):
+    """
+    staging.members'a güvenli INSERT yardımcısı.
+
+    DÜZELTİLDİ:
+      - branch_sk: INTEGER sütun — string 'BRANCH001' geçersiz. NULL bırakıldı.
+      - ON CONFLICT (member_id): staging.members'da member_id'ye UNIQUE constraint
+        yok (sadece PRIMARY KEY olan id var). ON CONFLICT kaldırıldı;
+        _cleanup zaten her testten önce ilgili kayıtları siliyor.
+    """
+    cur.execute("""
+        INSERT INTO staging.members
+        (member_id, full_name, tc_hash, city, district,
+         birth_date, income, signup_date, member_status,
+         phone, email, branch_sk)
+        VALUES
+        (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NULL)
+    """, (member_id, full_name, tc_hash, city, district,
+          birth_date, income, signup_date, member_status,
+          phone, email))
+    conn.commit()
+
+
 # ==========================================
 # TEST 1 — Yeni üye dim_member'a eklenir
 # ==========================================
 def test_yeni_uye_eklenir(conn):
     cur = conn.cursor()
 
-    cur.execute("""
-        INSERT INTO staging.members
-        (member_id, full_name, tc_hash, city, district,
-         birth_date, income, signup_date, member_status,
-         phone, email)
-        VALUES
-        ('TEST001', 'Test Kisi', 'abc123hash', 'Istanbul', 'Kadikoy',
-         '1990-01-01', 50000, '2024-01-01', 'aktif',
-         '05001234567', 'test@test.com')
-        ON CONFLICT (member_id) DO NOTHING
-    """)
-    conn.commit()
+    _insert_member(cur, conn,
+        'TEST001', 'Test Kisi', 'abc123hash', 'Istanbul', 'Kadikoy',
+        '1990-01-01', 50000, '2024-01-01', 'aktif',
+        '05001234567', 'test@test.com')
 
     load_dim_member_scd2(conn)
 
@@ -67,20 +105,14 @@ def test_yeni_uye_eklenir(conn):
 def test_statu_degisince_eski_kayit_kapanir(conn):
     cur = conn.cursor()
 
-    cur.execute("""
-        INSERT INTO staging.members
-        (member_id, full_name, tc_hash, city, district,
-         birth_date, income, signup_date, member_status,
-         phone, email)
-        VALUES
-        ('TEST002', 'Test Kisi2', 'abc456hash', 'Ankara', 'Cankaya',
-         '1985-05-15', 60000, '2023-01-01', 'aktif',
-         '05009876543', 'test2@test.com')
-        ON CONFLICT (member_id) DO NOTHING
-    """)
-    conn.commit()
+    _insert_member(cur, conn,
+        'TEST002', 'Test Kisi2', 'abc456hash', 'Ankara', 'Cankaya',
+        '1985-05-15', 60000, '2023-01-01', 'aktif',
+        '05009876543', 'test2@test.com')
+
     load_dim_member_scd2(conn)
 
+    # Statüyü güncelle
     cur.execute("""
         UPDATE staging.members
         SET member_status = 'gecikmeli'
@@ -106,18 +138,11 @@ def test_statu_degisince_eski_kayit_kapanir(conn):
 def test_statu_degisince_yeni_kayit_acilir(conn):
     cur = conn.cursor()
 
-    cur.execute("""
-        INSERT INTO staging.members
-        (member_id, full_name, tc_hash, city, district,
-         birth_date, income, signup_date, member_status,
-         phone, email)
-        VALUES
-        ('TEST003', 'Test Kisi3', 'abc789hash', 'Istanbul', 'Bakirkoy',
-         '1995-03-20', 70000, '2024-01-01', 'aktif',
-         '05001234567', 'test3@test.com')
-        ON CONFLICT (member_id) DO NOTHING
-    """)
-    conn.commit()
+    _insert_member(cur, conn,
+        'TEST003', 'Test Kisi3', 'abc789hash', 'Istanbul', 'Bakirkoy',
+        '1995-03-20', 70000, '2024-01-01', 'aktif',
+        '05001234567', 'test3@test.com')
+
     load_dim_member_scd2(conn)
 
     cur.execute("""
@@ -145,20 +170,16 @@ def test_statu_degisince_yeni_kayit_acilir(conn):
 def test_idempotency(conn):
     cur = conn.cursor()
 
-    for _ in range(2):
-        cur.execute("""
-            INSERT INTO staging.members
-            (member_id, full_name, tc_hash, city, district,
-             birth_date, income, signup_date, member_status,
-             phone, email)
-            VALUES
-            ('TEST004', 'Test Kisi4', 'test004uniquehash', 'Istanbul', 'Bakirkoy',
-             '1995-03-20', 70000, '2024-01-01', 'aktif',
-             '05001234567', 'test4@test.com')
-            ON CONFLICT (member_id) DO NOTHING
-        """)
-        conn.commit()
-        load_dim_member_scd2(conn)
+    # İlk kez ekle ve yükle
+    _insert_member(cur, conn,
+        'TEST004', 'Test Kisi4', 'test004uniquehash', 'Istanbul', 'Bakirkoy',
+        '1995-03-20', 70000, '2024-01-01', 'aktif',
+        '05001234567', 'test4@test.com')
+
+    load_dim_member_scd2(conn)
+
+    # Aynı veriyle tekrar yükle — staging kaydı zaten var, statü aynı
+    load_dim_member_scd2(conn)
 
     cur.execute("""
         SELECT COUNT(*) FROM dim_member
@@ -194,12 +215,14 @@ def test_pipeline_run_log_tablosuna_yazma(conn):
     after = new_cur.fetchone()[0]
     assert after > before, "Pipeline run log tablosuna yazılmadı!"
 
+    # DÜZELTİLDİ: Sadece bu test çalışmasından SONRA eklenen kayıtlara bak.
+    # Eski pipeline çalışmalarından kalan 'failed' kayıtlar testi engellememelidir.
+    # run_at > test başlamadan önceki zaman damgasını filtrele.
     new_cur.execute("""
         SELECT stage FROM pipeline_runs
         WHERE status = 'failed'
-        ORDER BY run_at DESC
-        LIMIT 6
-    """)
+          AND run_id > %s
+    """, (before,))
     failed_stages = new_cur.fetchall()
     new_conn.close()
 
