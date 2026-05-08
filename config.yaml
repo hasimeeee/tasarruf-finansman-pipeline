@@ -3,7 +3,7 @@ database:
   port: 5432
   name: tasarruf_finansman
   user: postgres
-  password: " "
+  password: ""          # .env'deki DB_PASSWORD kullanılır
 
 pipeline:
   batch_size: 1000
@@ -32,9 +32,10 @@ cities:
     Eskisehir: 2
     Mersin: 2
     Diger: 5
+
 smtp:
   host: sandbox.smtp.mailtrap.io
   port: 2525
-  user: 9561911fab4084
-  password: 26ee20df3e1959
-  to: "test@mail.com"
+  user: ""              # .env'deki SMTP_USER kullanılır
+  password: ""          # .env'deki SMTP_PASS kullanılır
+  to: ""                # .env'deki SMTP_TO kullanılır
