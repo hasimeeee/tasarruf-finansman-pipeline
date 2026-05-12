@@ -540,7 +540,7 @@ def check_business_rules(cur, conn, run_id) -> list:
 
 
 # ==========================================
-# 4. SATIR SAYISI ASSERTION — YENİ (Hafta 4)
+# 4. SATIR SAYISI ASSERTION 
 # ==========================================
 def check_row_counts(cur, conn, run_id) -> list:
     """
