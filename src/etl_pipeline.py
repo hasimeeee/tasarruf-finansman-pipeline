@@ -461,7 +461,21 @@ def load_fact_lottery(conn):
     conn.commit()
     log.info(f"fact_lottery: {len(records)} kayit yuklendi.")
     return len(records)
-
+def fix_terk_members(conn):
+    """terk statüsündeki üyelerin is_current'ını false yapar"""
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE dim_member
+        SET is_current = false,
+            valid_to = CURRENT_DATE
+        WHERE member_status = 'terk'
+          AND is_current = true
+    """)
+    updated = cur.rowcount
+    conn.commit()
+    cur.close()
+    log.info(f"fix_terk_members: {updated} kayit guncellendi.")
+    return updated
 
 # ==========================================
 # DATA QUALITY RAPORU — Satır Kaybı Özeti
@@ -547,13 +561,14 @@ def run_pipeline():
     conn = get_conn()
 
     steps = [
-        ("dim_date",      load_dim_date),
-        ("dim_plan",      load_dim_plan),
-        ("dim_branch",    load_dim_branch),
-        ("dim_member",    load_dim_member_scd2),
-        ("fact_payments", load_fact_payments),
-        ("fact_lottery",  load_fact_lottery),
-    ]
+    ("dim_date",      load_dim_date),
+    ("dim_plan",      load_dim_plan),
+    ("dim_branch",    load_dim_branch),
+    ("dim_member",    load_dim_member_scd2),
+    ("fix_terk",      fix_terk_members),   # ← BURAYA EKLE
+    ("fact_payments", load_fact_payments),
+    ("fact_lottery",  load_fact_lottery),
+]
 
     for stage, fn in steps:
         t1 = time.time()

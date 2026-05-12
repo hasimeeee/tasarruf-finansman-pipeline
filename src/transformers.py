@@ -208,12 +208,12 @@ def transform_dim_member_record(row: tuple, valid_from=None):
     vf    = valid_from if valid_from is not None else (signup_date or today)
 
     return (
-        member_id, full_name, tc_hash, city, district,
-        ag, ib, signup_date, member_status,
-        None,   # member_segment — Faz 1 placeholder; Hafta 7 K-Means ile doldurulacak
-        churn,
-        vf, None, True, branch_sk
-    )
+    member_id, full_name, tc_hash, city, district,
+    ag, ib, signup_date, member_status,
+    None,
+    churn,
+    vf, None, member_status != 'terk', branch_sk  # ← düzeltildi
+)
  
  
 def transform_fact_payment_record(row: tuple) -> tuple:
