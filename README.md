@@ -29,10 +29,9 @@ tasarruf_pipeline/
 
 | Hafta | Kapsam |
 |-------|--------|
-| 1 | Sentetik veri üretimi, staging schema, data profiling |
 | 2 | ETL pipeline, star schema, SCD Type 2 (dim_member), cumulative_paid_ratio |
 | 3-4 | Schema tutarlılığı, UPSERT idempotency, dim_branch, data quality raporu |
-| 7 | K-Means ile member_segment (dim_member) |
+| 5 | Analiz sorgu katmanı: LAG/RANK/DENSE_RANK/ROW_NUMBER window fonksiyonları, CTE zincirleri, cohort retention (6/12/18 ay), churn pattern analizi, staging duplicate member_id kontrolü |
 
 ---
 
@@ -150,4 +149,3 @@ dim_member ─── fact_payments ─── dim_plan
 ```
 
 **dim_member** SCD Type 2 ile takip edilir: statü değiştiğinde (aktif → gecikmeli → terk) eski kayıt `valid_to` ile kapatılır, yeni kayıt eklenir.
-
