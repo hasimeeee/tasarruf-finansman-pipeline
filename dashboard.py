@@ -13,9 +13,7 @@ st.set_page_config(
 # ── Bağlantı ────────────────────────────────────────────────
 @st.cache_resource
 def get_engine():
-    return create_engine(
-        "postgresql://neondb_owner:npg_X9aygcQ3EHlZ@ep-super-term-al9k62e1.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require"
-    )
+    return create_engine(st.secrets["DATABASE_URL"])
 
 engine = get_engine()
 
