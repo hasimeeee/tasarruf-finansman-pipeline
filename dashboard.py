@@ -58,13 +58,13 @@ st.subheader("📊 Temel KPI'lar")
 
 kpi = query("""
     SELECT
-        COUNT(DISTINCT m.member_id)                                      AS toplam_uye,
+        COUNT(DISTINCT m.member_id)                                          AS toplam_uye,
         ROUND(100.0 * SUM(CASE WHEN m.member_status = 'aktif' THEN 1 ELSE 0 END)
-              / COUNT(*), 1)                                             AS aktif_oran,
-        ROUND(SUM(p.paid_amount) / 1000000.0, 2)                        AS toplam_tahsilat_m,
-        ROUND(AVG(NULLIF(p.days_late, 0)), 1)                            AS ort_gecikme,
+              / COUNT(*), 1)                                                 AS aktif_oran,
+        ROUND(SUM(p.paid_amount)::NUMERIC / 1000000.0, 2)                   AS toplam_tahsilat_m,
+        ROUND(AVG(NULLIF(p.days_late, 0))::NUMERIC, 1)                      AS ort_gecikme,
         ROUND(100.0 * SUM(CASE WHEN m.member_status = 'pasif' THEN 1 ELSE 0 END)
-              / COUNT(*), 1)                                             AS churn_orani
+              / COUNT(*), 1)                                                 AS churn_orani
     FROM dim_member m
     LEFT JOIN fact_payments p ON m.member_key = p.member_key
     WHERE m.is_current = TRUE
