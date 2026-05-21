@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 from sqlalchemy import create_engine
 
 # ── Sayfa ayarları ──────────────────────────────────────────
@@ -15,7 +14,7 @@ st.set_page_config(
 @st.cache_resource
 def get_engine():
     return create_engine(
-    "postgresql://neondb_owner:npg_X9aygcQ3EHlZ@ep-super-term-al9k62e1.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require"
+        "postgresql://neondb_owner:npg_X9aygcQ3EHlZ@ep-super-term-al9k62e1.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require"
     )
 
 engine = get_engine()
@@ -58,23 +57,23 @@ st.subheader("📊 Temel KPI'lar")
 
 kpi = query("""
     SELECT
-        COUNT(DISTINCT m.member_id)                                          AS toplam_uye,
-        ROUND(100.0 * SUM(CASE WHEN m.member_status = 'aktif' THEN 1 ELSE 0 END)
-              / COUNT(*), 1)                                                 AS aktif_oran,
-        ROUND(SUM(p.paid_amount)::NUMERIC / 1000000.0, 2)                   AS toplam_tahsilat_m,
-        ROUND(AVG(NULLIF(p.days_late, 0))::NUMERIC, 1)                      AS ort_gecikme,
-        ROUND(100.0 * SUM(CASE WHEN m.member_status = 'pasif' THEN 1 ELSE 0 END)
-              / COUNT(*), 1)                                                 AS churn_orani
+        COUNT(DISTINCT m.member_id)                                              AS toplam_uye,
+        ROUND((100.0 * SUM(CASE WHEN m.member_status = 'aktif' THEN 1 ELSE 0 END)
+              / COUNT(*))::NUMERIC, 1)                                           AS aktif_oran,
+        ROUND((SUM(p.paid_amount) / 1000000.0)::NUMERIC, 2)                     AS toplam_tahsilat_m,
+        ROUND(AVG(NULLIF(p.days_late, 0))::NUMERIC, 1)                          AS ort_gecikme,
+        ROUND((100.0 * SUM(CASE WHEN m.member_status = 'pasif' THEN 1 ELSE 0 END)
+              / COUNT(*))::NUMERIC, 1)                                           AS churn_orani
     FROM dim_member m
     LEFT JOIN fact_payments p ON m.member_key = p.member_key
     WHERE m.is_current = TRUE
 """)
 
 kura = query("""
-    SELECT ROUND(AVG(aylik_oran), 1) AS kura_orani
+    SELECT ROUND(AVG(aylik_oran)::NUMERIC, 1) AS kura_orani
     FROM (
-        SELECT ROUND(100.0 * COUNT(DISTINCT CASE WHEN p.payment_status = 'zamaninda' 
-              THEN p.member_key END) / NULLIF(COUNT(DISTINCT p.member_key), 0), 1) AS aylik_oran
+        SELECT ROUND((100.0 * COUNT(DISTINCT CASE WHEN p.payment_status = 'zamaninda'
+              THEN p.member_key END) / NULLIF(COUNT(DISTINCT p.member_key), 0))::NUMERIC, 1) AS aylik_oran
         FROM fact_payments p
         JOIN dim_date d ON p.date_key = d.date_key
         GROUP BY d.year, d.month
@@ -90,17 +89,22 @@ col4.metric("⏱️ Ort. Gecikme",     f"{k['ort_gecikme']} gün")
 col5.metric("🚪 Churn Oranı",      f"%{k['churn_orani']}")
 col6.metric("🎰 Kura Oranı",       f"%{kura.iloc[0]['kura_orani']}")
 
+st.markdown("---")
+
 # ── Grafik 1: Aylık Tahsilat Trendi ─────────────────────────
 st.subheader("📈 Aylık Tahsilat Trendi")
 
 trend = query(f"""
     SELECT
         d.year || '-' || LPAD(d.month::text, 2, '0') AS ay,
-        ROUND(SUM(p.paid_amount) / 1000000.0, 2)     AS tahsilat_m
+        ROUND((SUM(p.paid_amount) / 1000000.0)::NUMERIC, 2) AS tahsilat_m
     FROM fact_payments p
-    JOIN dim_date d ON p.date_key = d.date_key
+    JOIN dim_date d   ON p.date_key = d.date_key
+    JOIN dim_plan pl  ON p.plan_key = pl.plan_key
     WHERE d.year BETWEEN {secili_yil[0]} AND {secili_yil[1]}
-    GROUP BY 1 ORDER BY 1
+      AND pl.plan_type = ANY(ARRAY{secili_plan})
+    GROUP BY d.year, d.month
+    ORDER BY d.year, d.month
 """)
 
 fig1 = px.line(trend, x="ay", y="tahsilat_m",
@@ -115,27 +119,28 @@ col_a, col_b = st.columns(2)
 # ── Grafik 2: Plan Dağılımı ──────────────────────────────────
 with col_a:
     st.subheader("🏗️ Plan Tipi Dağılımı")
-    plan_dagılım = query("""
+    plan_dagilim = query(f"""
         SELECT pl.plan_type, COUNT(*) AS uye_sayisi
-        FROM dim_member m
-        JOIN dim_plan pl ON TRUE
-        JOIN fact_payments fp ON m.member_key = fp.member_key
-                              AND fp.plan_key = pl.plan_key
-        WHERE m.is_current = TRUE
+        FROM fact_payments p
+        JOIN dim_plan pl   ON p.plan_key = pl.plan_key
+        JOIN dim_member m  ON p.member_key = m.member_key AND m.is_current = TRUE
+        WHERE pl.plan_type = ANY(ARRAY{secili_plan})
+          AND m.city = ANY(ARRAY{secili_sehir})
         GROUP BY pl.plan_type
     """)
-    fig2 = px.pie(plan_dagılım, names="plan_type", values="uye_sayisi",
+    fig2 = px.pie(plan_dagilim, names="plan_type", values="uye_sayisi",
                   color_discrete_sequence=px.colors.qualitative.Set2)
     st.plotly_chart(fig2, use_container_width=True)
 
 # ── Grafik 3: Gecikme Dağılımı ───────────────────────────────
 with col_b:
     st.subheader("⏱️ Gecikme Dağılımı (Plan Tipine Göre)")
-    gecikme = query("""
+    gecikme = query(f"""
         SELECT pl.plan_type, p.days_late
         FROM fact_payments p
         JOIN dim_plan pl ON p.plan_key = pl.plan_key
         WHERE p.days_late > 0
+          AND pl.plan_type = ANY(ARRAY{secili_plan})
         LIMIT 50000
     """)
     fig3 = px.box(gecikme, x="plan_type", y="days_late",
@@ -151,7 +156,7 @@ st.subheader("🗺️ Şehir × Yıl Tahsilat Heatmap")
 
 heatmap_data = query(f"""
     SELECT m.city, d.year,
-           ROUND(SUM(p.paid_amount) / 1000000.0, 2) AS tahsilat_m
+           ROUND((SUM(p.paid_amount) / 1000000.0)::NUMERIC, 2) AS tahsilat_m
     FROM fact_payments p
     JOIN dim_member m  ON p.member_key = m.member_key AND m.is_current = TRUE
     JOIN dim_date d    ON p.date_key = d.date_key
@@ -196,9 +201,9 @@ cohort = query("""
         GROUP BY 1, 2
     )
     SELECT
-        TO_CHAR(r.cohort_ay, 'YYYY-MM') AS cohort,
+        TO_CHAR(r.cohort_ay, 'YYYY-MM')                        AS cohort,
         r.ay_no,
-        ROUND(100.0 * r.aktif_uye / cs.cohort_uye, 1) AS retention_pct
+        ROUND((100.0 * r.aktif_uye / cs.cohort_uye)::NUMERIC, 1) AS retention_pct
     FROM retention r
     JOIN cohort_size cs ON r.cohort_ay = cs.cohort_ay
     WHERE r.ay_no BETWEEN 0 AND 12
@@ -211,5 +216,28 @@ if not cohort.empty:
                      labels={"x": "Ay (Üyelikten Sonra)", "y": "Cohort", "color": "Retention %"},
                      color_continuous_scale="RdYlGn")
     st.plotly_chart(fig5, use_container_width=True)
+
+st.markdown("---")
+
+# ── Grafik 6: Gecikme Histogram ──────────────────────────────
+st.subheader("📊 Gecikme Dağılımı (Histogram)")
+
+histogram_data = query(f"""
+    SELECT p.days_late, pl.plan_type
+    FROM fact_payments p
+    JOIN dim_plan pl ON p.plan_key = pl.plan_key
+    WHERE p.days_late > 0
+      AND pl.plan_type = ANY(ARRAY{secili_plan})
+    LIMIT 50000
+""")
+
+fig6 = px.histogram(
+    histogram_data, x="days_late", color="plan_type",
+    nbins=50,
+    labels={"days_late": "Gecikme (Gün)", "count": "Ödeme Sayısı"},
+    barmode="overlay", opacity=0.7,
+    color_discrete_sequence=px.colors.qualitative.Set2
+)
+st.plotly_chart(fig6, use_container_width=True)
 
 st.caption("FuzulEv AI & Data Departmanı — Stajyer Proje Ödevi Hafta 6")
