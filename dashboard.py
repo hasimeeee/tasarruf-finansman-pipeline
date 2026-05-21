@@ -15,7 +15,7 @@ st.set_page_config(
 @st.cache_resource
 def get_engine():
     return create_engine(
-        "postgresql://postgres:2491@localhost:5432/tasarruf_finansman"
+    "postgresql://neondb_owner:npg_X9aygcQ3EHlZ@ep-super-term-al9k62e1.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require"
     )
 
 engine = get_engine()
