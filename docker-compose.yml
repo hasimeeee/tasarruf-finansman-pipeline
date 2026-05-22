@@ -1,12 +1,9 @@
 version: '3.8'
 
-# FIX: Şifreler artık düz metin değil — .env dosyasından okunuyor.
-# Proje kökünde bir .env dosyası oluştur (asla commit'leme):
-#
-#   POSTGRES_PASSWORD=gercek_sifreniz
-#   DB_PASSWORD=gercek_sifreniz
-#
-# .env dosyasının .gitignore'da olduğunu kontrol et!
+# MİMARİ:
+#   postgres  →  ham/işlenmiş veri lokal
+#   pipeline  →  ETL çalışır, veriyi işleyip hem lokal'e hem Neon'a yazar
+#   Streamlit →  Neon'dan okur (Docker dışında, ayrı çalışır)
 
 services:
   postgres:
@@ -14,22 +11,22 @@ services:
     container_name: tasarruf_db
 
     environment:
-      POSTGRES_DB: tasarruf_finansman
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}   # FIX: .env'den oku
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
 
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
     ports:
-      - "5433:5432"
+      - "5433:5432"   # DBeaver'dan localhost:5433 ile bağlanırsın
 
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./sql:/docker-entrypoint-initdb.d
+      - ./sql:/docker-entrypoint-initdb.d   # varsa başlangıç SQL'leri
 
     restart: always
 
@@ -41,19 +38,25 @@ services:
       postgres:
         condition: service_healthy
 
+    env_file:
+      - .env
+
+    environment:
+      # Lokal DB (container içinde "postgres" host'u kullan, localhost değil!)
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      # Neon bağlantısı .env'den gelir (NEON_DATABASE_URL)
+
     volumes:
       - .:/app
+      - ./logs:/app/logs
 
     working_dir: /app
 
-    environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: tasarruf_finansman
-      DB_USER: postgres
-      DB_PASSWORD: ${DB_PASSWORD}               # FIX: .env'den oku
-
-    command: sh -c "mkdir -p /app/logs && touch /app/logs/cron.log && cron && tail -f /app/logs/cron.log"
+    restart: unless-stopped
 
 volumes:
   postgres_data:
