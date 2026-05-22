@@ -8,3 +8,4 @@ seaborn
 faker
 python-dotenv
 pyyaml
+pytest

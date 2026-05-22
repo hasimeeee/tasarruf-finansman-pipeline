@@ -1,0 +1,9 @@
+jupyter
+scikit-learn
+apscheduler
+xgboost
+lightgbm
+notebook
+jupyterlab
+ipykernel
+ipywidgets
