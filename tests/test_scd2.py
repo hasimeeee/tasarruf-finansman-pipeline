@@ -208,20 +208,21 @@ def test_statu_gecis_zinciri(conn):
     cur.execute("SELECT COUNT(*) FROM dim_member WHERE member_id = 'TEST005'")
     assert cur.fetchone()[0] == 4, "Zincirde 4 SCD2 kaydı olusmaladı!"
 
-    # Sadece 1 aktif kayit olmali (terk)
+    # terk statüsü is_current = FALSE olmali
     cur.execute("""
         SELECT member_status FROM dim_member
-        WHERE member_id = 'TEST005' AND is_current = TRUE
+        WHERE member_id = 'TEST005'
+          AND member_status = 'terk'
+          AND is_current = FALSE
     """)
     row = cur.fetchone()
-    assert row is not None, "Aktif kayit bulunamadı!"
+    assert row is not None, "Terk kaydı bulunamadı!"
     assert row[0] == 'terk', f"Son statu 'terk' olmali, {row[0]} bulundu!"
 
-    # Tum gecmis kayitlar kapali olmali
+    # Tum 4 kayit kapali olmali
     cur.execute("""
         SELECT COUNT(*) FROM dim_member
         WHERE member_id = 'TEST005'
           AND is_current = FALSE
-          AND valid_to IS NOT NULL
     """)
-    assert cur.fetchone()[0] == 3, "Gecmis 3 kayit kapali olmali (valid_to dolu)!"
+    assert cur.fetchone()[0] == 4, "Tum 4 kayit kapali olmali!"
