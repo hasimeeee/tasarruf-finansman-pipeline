@@ -17,7 +17,7 @@ st.set_page_config(
 # ── Bağlantı ────────────────────────────────────────────────
 @st.cache_resource
 def get_engine():
-    db_url = os.getenv("DATABASE_URL")
+    db_url = st.secrets.get("DATABASE_URL", None) or os.getenv("DATABASE_URL")
     if not db_url:
         st.error("DATABASE_URL bulunamadı! .env dosyasını kontrol edin.")
         st.stop()
@@ -77,9 +77,10 @@ kpi = query("""
 # Churn: tüm üyeler (is_current filtresi yok)
 churn = query("""
     SELECT
-        ROUND((100.0 * SUM(CASE WHEN member_status = 'terk' THEN 1 ELSE 0 END)
+        ROUND((100.0 * COUNT(DISTINCT CASE WHEN member_status = 'terk' THEN member_id END)
               / NULLIF(COUNT(DISTINCT member_id), 0))::NUMERIC, 1) AS churn_orani
     FROM dim_member
+    WHERE is_current = TRUE OR member_status = 'terk'
 """)
 
 kura = query("""
