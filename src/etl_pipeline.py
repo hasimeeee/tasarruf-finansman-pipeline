@@ -51,7 +51,16 @@ DB = _db
 
 
 def get_conn():
-    return psycopg2.connect(**DB)
+    if "url" in DB:
+        return psycopg2.connect(DB["url"])
+
+    return psycopg2.connect(
+        host=DB["host"],
+        port=DB["port"],
+        user=DB["user"],
+        password=DB["password"],
+        dbname=DB["dbname"]
+    )
 
 
 def log_pipeline_run(conn, pipeline_run_id, stage, status, rows=0, duration=0.0, error=None):
@@ -228,31 +237,39 @@ def load_dim_member_scd2(conn):
     # staging.branches.branch_sk eşleşir → staging.branches.branch_id alınır
     # → dim_branch'te is_current=TRUE olan kaydın branch_sk (SERIAL) bulunur.
     cur.execute("""
-        SELECT *
-        FROM (
-            SELECT
-                sm.member_id,
-                sm.full_name,
-                sm.tc_hash,
-                sm.city,
-                sm.district,
-                sm.birth_date,
-                sm.income,
-                sm.signup_date,
-                sm.member_status,
-                db.branch_sk AS branch_sk,   -- dim_branch surrogate key (gerçek FK)
-                ROW_NUMBER() OVER (
-                    PARTITION BY sm.tc_hash
-                    ORDER BY sm.signup_date DESC
-                ) AS rn
-            FROM staging.members sm
-            LEFT JOIN staging.branches sb ON sb.branch_sk = sm.branch_sk
-            LEFT JOIN dim_branch db
-                ON db.branch_id  = sb.branch_id
-               AND db.is_current = TRUE
-            WHERE sm.tc_hash IS NOT NULL AND sm.tc_hash != ''
-        ) t
-        WHERE rn = 1
+    SELECT *
+    FROM (
+        SELECT
+            sm.member_id,
+            sm.full_name,
+            sm.tc_hash,
+            sm.city,
+            sm.district,
+            sm.birth_date,
+            sm.income,
+            sm.signup_date,
+            sm.member_status,
+
+            db.branch_key AS branch_sk,
+
+            ROW_NUMBER() OVER (
+                PARTITION BY sm.tc_hash
+                ORDER BY sm.signup_date DESC
+            ) AS rn
+
+        FROM staging.members sm
+
+        LEFT JOIN staging.branches sb
+            ON sb.branch_sk = sm.branch_sk
+
+        LEFT JOIN dim_branch db
+            ON db.branch_id = sb.branch_id
+           AND db.is_current = TRUE
+
+        WHERE sm.tc_hash IS NOT NULL
+          AND sm.tc_hash != ''
+    ) t
+    WHERE rn = 1
     """)
 
     staging_rows = cur.fetchall()

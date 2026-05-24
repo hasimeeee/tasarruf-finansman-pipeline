@@ -90,11 +90,13 @@ def _gecikme_gun_uret(prob=0.5):
     return int(random.expovariate(1/5)) + 1
 
 def get_db_connection():
-    db = config["database"].copy()
-    if "name" in db:
-        db["dbname"] = db.pop("name")
-    return psycopg2.connect(**db)
-
+    return psycopg2.connect(
+        host=os.getenv("DB_HOST", "postgres"),
+        port=int(os.getenv("DB_PORT", 5432)),
+        dbname=os.getenv("DB_NAME", "tasarruf_finansman"),
+        user=os.getenv("DB_USER", "postgres"),
+        password=os.getenv("DB_PASSWORD", "2491")
+    )
 # ==========================================
 #  BRANCHES
 # ==========================================
@@ -407,7 +409,8 @@ def save_to_staging(conn, members, plans, payments, lottery, branches):
            (member_id, full_name, tc_hash, city, district,
             birth_date, income, signup_date, member_status,
             phone, email, branch_sk)
-           VALUES %s""",
+           VALUES %s
+           ON CONFLICT (member_id) DO NOTHING""",
         [(m['member_id'], m['full_name'], m['tc_hash'], m['city'], m['district'],
           m['birth_date'], m['income'], m['signup_date'], m['member_status'],
           m['phone'], m['email'], m['branch_sk'])

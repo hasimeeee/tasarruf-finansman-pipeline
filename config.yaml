@@ -1,9 +1,9 @@
 database:
-  host: localhost
+  host: tasarruf_db
   port: 5432
   name: tasarruf_finansman
   user: postgres
-  password: ""          # .env'deki DB_PASSWORD kullanılır
+  password: ""
 
 pipeline:
   batch_size: 1000
@@ -36,6 +36,6 @@ cities:
 smtp:
   host: sandbox.smtp.mailtrap.io
   port: 2525
-  user: ""              # .env'deki SMTP_USER kullanılır
-  password: ""          # .env'deki SMTP_PASS kullanılır
-  to: ""                # .env'deki SMTP_TO kullanılır
+  user: ""
+  password: ""
+  to: ""
