@@ -250,8 +250,7 @@ def load_dim_member_scd2(conn):
             sm.signup_date,
             sm.member_status,
 
-            db.branch_key AS branch_sk,
-
+            db.branch_sk AS branch_sk,
             ROW_NUMBER() OVER (
                 PARTITION BY sm.tc_hash
                 ORDER BY sm.signup_date DESC
