@@ -1,8 +1,9 @@
 from sqlalchemy import create_engine, text
 import pandas as pd
+import os
 
-local_url = "postgresql://postgres:2491@localhost:5432/tasarruf_finansman"
-neon_url = "postgresql://neondb_owner:npg_X9aygcQ3EHlZ@ep-super-term-al9k62e1.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require"
+local_url = os.getenv("LOCAL_DB_URL")
+neon_url = os.getenv("NEON_DB_URL")
 
 local_engine = create_engine(local_url)
 neon_engine = create_engine(neon_url)
